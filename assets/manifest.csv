@@ -4,3 +4,11 @@ sheets/interiors/int05_gym_equipment_768.png,orig,LimeZu Modern Interiors,健身
 sheets/interiors/int03_office_desks_768.png,orig,LimeZu Modern Interiors,办公桌/电脑/隔断
 sheets/interiors/int19_office_misc_768.png,orig,LimeZu Modern Interiors,办公杂项
 sheets/interiors/int07_bathroom_locker_768.png,orig,LimeZu Modern Interiors,浴室/更衣
+characters/generated/char_worker_bench_press_2f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,玩家卧推躺姿 2 帧 64x48 格，不含凳子；提示词 generated/_prompts/char_worker_bench_press_*_v3.md
+characters/generated/char_worker_dumbbell_curl_2f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,玩家哑铃弯举 2 帧 48x48；提示词 generated/_prompts/char_worker_dumbbell_curl_*_v2.md
+characters/generated/char_worker_treadmill_4f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,玩家侧面朝右跑步 4 帧 48x48；提示词 generated/_prompts/char_worker_treadmill_*_v2.md
+characters/generated/char_worker_punching_bag_2f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,玩家侧面朝右架势/出拳 2 帧 48x48；提示词 generated/_prompts/char_worker_punching_bag_*_v2.md
+characters/generated/tall/char_worker_bench_press_2f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,同上卧推，npc_walk 同比例 96x72 格
+characters/generated/tall/char_worker_dumbbell_curl_2f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,同上弯举，npc_walk 同比例 48x96 格
+characters/generated/tall/char_worker_treadmill_4f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,同上跑步，npc_walk 同比例 64x96 格
+characters/generated/tall/char_worker_punching_bag_2f_ai_v1.png,ai,AI 生成(codex 默认图像模型)，无第三方素材,同上沙袋，npc_walk 同比例 64x96 格
