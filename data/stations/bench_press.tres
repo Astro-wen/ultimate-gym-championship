@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="StationData" format=3]
+[gd_resource type="Resource" script_class="StationData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/tall/char_worker_bench_press_2f_ai_v1.png" id="2_pose"]
 
 [resource]
 script = ExtResource("1_sd")
@@ -18,7 +19,14 @@ buff_duration = 8.0
 noise = 0.5
 exposure = 1.4
 anim_name = &"bench_press"
-anchor_offsets = Array[Vector2]([Vector2(0, -14)])
-exit_offset = Vector2(0, 30)
-footprint = Vector2(40, 40)
+base_texture_path = "res://assets/sheets/interiors/int05_gym_equipment_768.png"
+base_region = Rect2(440, 350, 80, 114)
+pose_texture = ExtResource("2_pose")
+pose_frames = 2
+pose_frame_size = Vector2i(96, 72)
+pose_anchor = Vector2(48, 71)
+pose_loop = false
+anchor_offsets = Array[Vector2]([Vector2(0, -16)])
+exit_offset = Vector2(0, 26)
+footprint = Vector2(64, 44)
 placeholder_color = Color(0.75, 0.35, 0.3, 1)

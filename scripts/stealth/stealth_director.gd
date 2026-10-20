@@ -7,6 +7,7 @@ extends Node
 @export var time_penalty: float = 15.0
 @export var difficulty_step: float = 0.05
 @export var difficulty_cap: float = 1.3
+@export var respawn_grace: float = 2.5
 
 var player: Player
 var level: GymLevel
@@ -44,6 +45,7 @@ func _on_spotted(by: Patroller) -> void:
 	for n: Node in get_tree().get_nodes_in_group(&"patrollers"):
 		var pt: Patroller = n as Patroller
 		pt.awareness = 0.0
+		pt.grace = respawn_grace
 	by.difficulty = minf(by.difficulty + difficulty_step, difficulty_cap)
 	if GameState.detections >= max_detections:
 		GameState.finish(GameState.State.CAUGHT)

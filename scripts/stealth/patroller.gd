@@ -14,8 +14,8 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 @export var hearing_range: float = 320.0
 @export var investigate_time: float = 2.0
 ## Awareness tuning (see OPUS_BRIEF 3.7).
-@export var base_rise: float = 0.9
-@export var fall_rate: float = 0.35
+@export var base_rise: float = 0.6
+@export var fall_rate: float = 0.4
 @export var fall_delay: float = 0.6
 @export var speed_factor_still: float = 0.3
 @export var speed_factor_walk: float = 1.0
@@ -24,6 +24,9 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 @export var buff_factor: float = 0.6
 ## Grows +5% per detection (capped at +30%).
 @export var difficulty: float = 1.0
+@export var view_range: float = 264.0
+## Seconds during which awareness cannot rise (after a detection).
+var grace: float = 0.0
 
 var mode: Mode = Mode.LOOK
 var level: GymLevel
@@ -129,7 +132,7 @@ func _update_cone(_delta: float) -> void:
 	cone.rotation = _look_angle
 	facing = Vector2.RIGHT.rotated(_look_angle)
 	cone.heat = awareness
-	cone.range_px = 288.0 * difficulty
+	cone.range_px = view_range * difficulty
 	cone.angle_deg = 70.0 * minf(difficulty, 1.15)
 
 
@@ -171,7 +174,8 @@ func _update_awareness(delta: float) -> void:
 	var p: Player = target_player
 	if p == null or not is_instance_valid(p):
 		return
-	var seen: bool = cone.visible_fraction(sample_points(p)) > 0.0
+	grace = maxf(grace - delta, 0.0)
+	var seen: bool = grace <= 0.0 and cone.visible_fraction(sample_points(p)) > 0.0
 	if seen:
 		_unseen_t = 0.0
 		var stealthy: bool = GameState.has_buff(&"stealthy")

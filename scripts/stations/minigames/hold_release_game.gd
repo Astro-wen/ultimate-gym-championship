@@ -5,7 +5,6 @@ extends Minigame
 var charge: float = 0.0
 var holding: bool = false
 var _lockout: float = 0.0
-var _lift: float = 0.0
 
 
 func handle_input(action: StringName, pressed: bool) -> void:
@@ -19,14 +18,12 @@ func handle_input(action: StringName, pressed: bool) -> void:
 		var z: Vector2 = zone()
 		var good: bool = charge >= z.x and charge <= z.y
 		_count(good)
-		_lift = 1.0 if good else 0.4
 		charge = 0.0
 		_lockout = p("lockout", 0.25)
 
 
 func tick(delta: float) -> void:
 	_lockout = maxf(_lockout - delta, 0.0)
-	_lift = maxf(_lift - delta * 2.0, 0.0)
 	if holding:
 		charge += delta * p("charge_rate", 0.9)
 		if charge > 1.0:
@@ -49,4 +46,5 @@ func hint() -> String:
 
 
 func pose() -> float:
-	return clampf(maxf(_lift, 1.0 - charge), 0.0, 1.0)
+	# 0 = bar locked out (frame 0), 1 = bar on the chest while charging
+	return clampf(charge, 0.0, 1.0) if holding else 0.0

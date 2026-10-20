@@ -1,11 +1,20 @@
 extends Node2D
 ## Root of the demo. Builds the level, actors and HUD; owns start/pause/restart.
 
-@export var level_script: Script = preload("res://scripts/level/gym_level.gd")
+## Placeholder colors (used when the licensed character sheets are absent)
+## and walk-sheet skins [set, index] (used when present).
+const GOER_LOOKS: Array[Dictionary] = [
+	{"body": Color(0.85, 0.25, 0.25), "legs": Color(0.2, 0.2, 0.25), "hair": Color(0.15, 0.1, 0.08), "skin": [0, 0]},
+	{"body": Color(0.3, 0.7, 0.4), "legs": Color(0.25, 0.25, 0.35), "hair": Color(0.85, 0.65, 0.3), "skin": [0, 2]},
+	{"body": Color(0.95, 0.6, 0.2), "legs": Color(0.15, 0.15, 0.2), "hair": Color(0.3, 0.2, 0.15), "skin": [3, 0]},
+]
+const PLAYER_SKIN: Array[int] = [0, 6]
+const PM_SKIN: Array[int] = [1, 0]
 
 var level: GymLevel
 var player: Player
 var hud: Hud
+var director: StealthDirector
 
 
 func _ready() -> void:
@@ -21,20 +30,13 @@ func _ready() -> void:
 	player.position = level.player_spawn
 	player.facing = Vector2.UP
 	level.world.add_child(player)
+	LocalArt.apply_skin(player.visual, PLAYER_SKIN[0], PLAYER_SKIN[1])
 	_spawn_npcs()
 	hud = Hud.new()
 	hud.player = player
 	add_child(hud)
+	Sfx.attach(self)
 	DebugShot.apply_cmdline(self)
-
-
-const GOER_LOOKS: Array[Dictionary] = [
-	{"body": Color(0.85, 0.25, 0.25), "legs": Color(0.2, 0.2, 0.25), "hair": Color(0.15, 0.1, 0.08)},
-	{"body": Color(0.3, 0.7, 0.4), "legs": Color(0.25, 0.25, 0.35), "hair": Color(0.85, 0.65, 0.3)},
-	{"body": Color(0.95, 0.6, 0.2), "legs": Color(0.15, 0.15, 0.2), "hair": Color(0.3, 0.2, 0.15)},
-]
-
-var director: StealthDirector
 
 
 func _spawn_npcs() -> void:
@@ -49,6 +51,7 @@ func _spawn_npcs() -> void:
 		g.legs_color = look["legs"]
 		g.hair_color = look["hair"]
 		level.world.add_child(g)
+		LocalArt.apply_skin(g.visual, look["skin"][0], look["skin"][1])
 	var pm := Patroller.new()
 	pm.name = "ProductManager"
 	pm.level = level
@@ -56,6 +59,7 @@ func _spawn_npcs() -> void:
 	pm.position = level.patrol_points[0]
 	pm.target_player = player
 	level.world.add_child(pm)
+	LocalArt.apply_skin(pm.visual, PM_SKIN[0], PM_SKIN[1])
 	director = StealthDirector.new()
 	director.name = "StealthDirector"
 	director.player = player

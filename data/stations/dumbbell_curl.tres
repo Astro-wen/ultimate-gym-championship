@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="StationData" format=3]
+[gd_resource type="Resource" script_class="StationData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/tall/char_worker_dumbbell_curl_2f_ai_v1.png" id="2_pose"]
 
 [resource]
 script = ExtResource("1_sd")
@@ -18,7 +19,14 @@ buff_duration = 8.0
 noise = 0.3
 exposure = 1.2
 anim_name = &"dumbbell_curl"
-anchor_offsets = Array[Vector2]([Vector2(0, 26)])
+base_texture_path = "res://assets/sheets/interiors/int05_gym_equipment_768.png"
+base_region = Rect2(532, 680, 88, 84)
+pose_texture = ExtResource("2_pose")
+pose_frames = 2
+pose_frame_size = Vector2i(48, 96)
+pose_anchor = Vector2(24, 96)
+pose_loop = false
+anchor_offsets = Array[Vector2]([Vector2(0, 30)])
 exit_offset = Vector2(0, 34)
-footprint = Vector2(56, 20)
+footprint = Vector2(80, 30)
 placeholder_color = Color(0.35, 0.55, 0.75, 1)
