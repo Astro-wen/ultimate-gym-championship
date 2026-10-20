@@ -92,6 +92,11 @@ func _exit_tree() -> void:
 		station.release(self, &"removed")
 
 
+## Short text shown above the head ("!" / "?"), empty for none.
+func bubble() -> String:
+	return ""
+
+
 func _on_use_started() -> void:
 	pass
 
