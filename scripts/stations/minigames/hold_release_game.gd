@@ -1,0 +1,52 @@
+class_name HoldReleaseGame
+extends Minigame
+## Bench press: hold interact to charge, release inside the green zone.
+
+var charge: float = 0.0
+var holding: bool = false
+var _lockout: float = 0.0
+var _lift: float = 0.0
+
+
+func handle_input(action: StringName, pressed: bool) -> void:
+	if action != &"interact" or _lockout > 0.0:
+		return
+	if pressed:
+		holding = true
+		charge = 0.0
+	elif holding:
+		holding = false
+		var z: Vector2 = zone()
+		var good: bool = charge >= z.x and charge <= z.y
+		_count(good)
+		_lift = 1.0 if good else 0.4
+		charge = 0.0
+		_lockout = p("lockout", 0.25)
+
+
+func tick(delta: float) -> void:
+	_lockout = maxf(_lockout - delta, 0.0)
+	_lift = maxf(_lift - delta * 2.0, 0.0)
+	if holding:
+		charge += delta * p("charge_rate", 0.9)
+		if charge > 1.0:
+			holding = false
+			charge = 0.0
+			_count(false)
+			_lockout = p("lockout", 0.25)
+
+
+func meter() -> float:
+	return clampf(charge, 0.0, 1.0)
+
+
+func zone() -> Vector2:
+	return Vector2(p("zone_lo", 0.62), p("zone_hi", 0.86))
+
+
+func hint() -> String:
+	return "按住 E 蓄力，绿区松开"
+
+
+func pose() -> float:
+	return clampf(maxf(_lift, 1.0 - charge), 0.0, 1.0)
