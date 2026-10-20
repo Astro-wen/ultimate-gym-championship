@@ -21,6 +21,7 @@ var _exit_hooks: Dictionary = {}     # instance_id -> Callable
 var _queue: Array[Node] = []
 var _clock: float = 0.0
 var _body: StaticBody2D
+var _tex: Texture2D
 
 
 static func station_of(who: Node) -> Station:
@@ -39,6 +40,8 @@ static func clear_all_claims() -> void:
 
 func _ready() -> void:
 	add_to_group(&"stations")
+	if data != null and data.base_texture == null and data.base_texture_path != "":
+		_tex = LocalArt.tex(data.base_texture_path)
 	y_sort_enabled = false
 	_build_body()
 	queue_redraw()
@@ -220,13 +223,14 @@ func _build_body() -> void:
 func _draw() -> void:
 	if data == null:
 		return
-	if data.base_texture != null:
-		var tex_size: Vector2 = data.base_region.size if data.base_region.has_area() else data.base_texture.get_size()
+	var tex: Texture2D = data.base_texture if data.base_texture != null else _tex
+	if tex != null:
+		var tex_size: Vector2 = data.base_region.size if data.base_region.has_area() else tex.get_size()
 		var dst := Rect2(Vector2(-tex_size.x * 0.5, -tex_size.y), tex_size)
 		if data.base_region.has_area():
-			draw_texture_rect_region(data.base_texture, dst, data.base_region)
+			draw_texture_rect_region(tex, dst, data.base_region)
 		else:
-			draw_texture_rect(data.base_texture, dst, false)
+			draw_texture_rect(tex, dst, false)
 	else:
 		var fp: Vector2 = data.footprint
 		draw_rect(Rect2(Vector2(-fp.x * 0.5, -fp.y - 16), Vector2(fp.x, fp.y + 16)), data.placeholder_color)

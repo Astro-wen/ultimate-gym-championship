@@ -16,10 +16,10 @@ const WALL: float = 24.0
 	"res://data/stations/punching_bag.tres",
 ]
 @export var station_positions: Array[Vector2] = [
-	Vector2(170, 200),
-	Vector2(420, 170),
-	Vector2(650, 190),
-	Vector2(740, 190),
+	Vector2(170, 215),
+	Vector2(420, 185),
+	Vector2(650, 215),
+	Vector2(740, 215),
 	Vector2(870, 360),
 ]
 ## Solid furniture that also blocks sight: Rect2 in room pixels.

@@ -20,6 +20,7 @@ var focus_station: Station = null
 func _ready() -> void:
 	super._ready()
 	add_to_group(&"player")
+	visual.use_pose_art = true
 	collision_layer = Layers.PLAYER
 	collision_mask = Layers.WORLD | Layers.NPC
 

@@ -9,6 +9,8 @@ var walk_cell: Vector2i = Vector2i(48, 48)
 ## Sheet origin (in cells) of this character inside a multi-character sheet.
 var walk_origin: Vector2i = Vector2i.ZERO
 var actor: ActorBody
+## Draw the station's AI pose sprites (the player); NPCs use their own sheet.
+var use_pose_art: bool = false
 var _walk_t: float = 0.0
 
 
@@ -36,7 +38,7 @@ func _draw() -> void:
 	var b: String = actor.bubble()
 	if b != "":
 		var font: Font = ThemeDB.fallback_font
-		var top: Vector2 = Vector2(0, -58)
+		var top: Vector2 = Vector2(0, -84 if walk_sheet != null else -58)
 		draw_circle(top, 10.0, Color.WHITE)
 		draw_arc(top, 10.0, 0.0, TAU, 20, Color(0.1, 0.1, 0.15), 1.5)
 		var col: Color = Color(0.9, 0.15, 0.1) if b != "?" else Color(0.9, 0.6, 0.1)
@@ -67,6 +69,36 @@ func _draw_walk_sheet() -> void:
 	draw_texture_rect_region(walk_sheet, Rect2(Vector2(-cell.x * 0.5, -cell.y + 4.0), cell), src)
 
 
+func _sheet_frame(col: int, row: int, offset: Vector2 = Vector2.ZERO) -> void:
+	var cell := Vector2(walk_cell)
+	var src := Rect2(Vector2((walk_origin.x + col) * walk_cell.x, (walk_origin.y + row) * walk_cell.y), cell)
+	draw_texture_rect_region(walk_sheet, Rect2(Vector2(-cell.x * 0.5, -cell.y + 4.0) + offset, cell), src)
+
+
+## NPC poses built from their own walk sheet plus drawn props.
+func _draw_pose_sheet(d: StationData, t: float) -> void:
+	var iron := Color(0.22, 0.22, 0.28)
+	match d.minigame:
+		&"hold_release":
+			_sheet_frame(1, 0)
+			var y: float = lerpf(-62.0, -42.0, t)
+			draw_line(Vector2(-26, y), Vector2(26, y), Color(0.75, 0.75, 0.8), 2.0)
+			draw_rect(Rect2(-31, y - 7, 6, 14), iron)
+			draw_rect(Rect2(25, y - 7, 6, 14), iron)
+		&"alternate":
+			_sheet_frame(1, 0)
+			var y2: float = lerpf(-26.0, -42.0, t)
+			draw_rect(Rect2(-20, y2, 8, 5), iron)
+			draw_rect(Rect2(12, -26.0 - (-26.0 - y2) * 0.3, 8, 5), iron)
+		&"rhythm":
+			_sheet_frame([0, 1, 2, 1][int(t * 4.0) % 4], 3, Vector2(0, -absf(sin(t * TAU)) * 2.0))
+		&"timing":
+			_sheet_frame(1, 2)
+			draw_circle(Vector2(lerpf(6.0, 18.0, t), -36), 4.0, Color(0.85, 0.15, 0.15))
+		_:
+			_draw_walk_sheet()
+
+
 func _draw_standing() -> void:
 	var bob: float = 0.0
 	var step: float = 0.0
@@ -94,10 +126,14 @@ func _draw_head(c: Vector2) -> void:
 
 func _draw_pose(d: StationData) -> void:
 	var t: float = clampf(actor.pose_amount, 0.0, 1.0)
-	if d.pose_texture != null and d.pose_frames > 0:
-		var frame: int = clampi(int(round(t * float(d.pose_frames - 1))), 0, d.pose_frames - 1)
+	if use_pose_art and d.pose_texture != null and d.pose_frames > 0:
+		var n: int = d.pose_frames
+		var frame: int = (int(t * n) % n) if d.pose_loop else clampi(int(round(t * float(n - 1))), 0, n - 1)
 		var fs := Vector2(d.pose_frame_size)
-		draw_texture_rect_region(d.pose_texture, Rect2(Vector2(-fs.x * 0.5, -fs.y), fs), Rect2(Vector2(frame * fs.x, 0), fs))
+		draw_texture_rect_region(d.pose_texture, Rect2(-d.pose_anchor, fs), Rect2(Vector2(frame * fs.x, 0), fs))
+		return
+	if walk_sheet != null:
+		_draw_pose_sheet(d, t)
 		return
 	var outline := Color(0.1, 0.1, 0.15)
 	match d.minigame:

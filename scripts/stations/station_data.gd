@@ -22,10 +22,16 @@ extends Resource
 @export var exposure: float = 1.3
 @export var anim_name: StringName = &""
 @export var base_texture: Texture2D
+## Optional path to (possibly gitignored) art; loaded only if present.
+@export var base_texture_path: String = ""
 @export var base_region: Rect2 = Rect2()
 @export var pose_texture: Texture2D
 @export var pose_frames: int = 1
 @export var pose_frame_size: Vector2i = Vector2i(48, 48)
+## Ground point (feet) inside a pose frame; drawn at the user's position.
+@export var pose_anchor: Vector2 = Vector2(24, 48)
+## Cyclic animation (frame = floor(t * frames)) instead of a 0..1 pose blend.
+@export var pose_loop: bool = false
 ## Where users stand/lie, relative to the station origin. One per capacity slot.
 @export var anchor_offsets: Array[Vector2] = [Vector2.ZERO]
 ## Where users are placed when they leave.
