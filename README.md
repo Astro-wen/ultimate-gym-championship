@@ -1,0 +1,51 @@
+# Ultimate Gym Championship（Demo）
+
+午休 3 分钟，偷偷溜进健身房把今天的训练量练完，还不能被巡视的产品经理抓去开需求会。
+
+Godot 4.7 · GDScript · 像素风 960×540
+
+## 怎么玩
+
+- 双击 `play.bat`（默认用 Steam 版 Godot 路径；别的路径先设环境变量 `GODOT_EXE`），或者用 Godot 编辑器打开本目录按 F5。
+- 开局按 **E** 开始。
+
+| 按键 | 作用 |
+|---|---|
+| WASD / 方向键 | 移动（默认慢走，比较安静） |
+| Shift | 跑（快，但更容易被发现） |
+| E / 空格 | 使用器械、做动作 |
+| Q | 离开器械 |
+| Esc | 暂停 |
+| R | 重开 |
+
+**四个动作**
+
+| 器械 | 玩法 | 收益 |
+|---|---|---|
+| 卧推 | 按住 E 蓄力，在绿区松开，5 次一组 | 力量 +4 |
+| 哑铃弯举 | ← → 交替按，6 次一组 | 力量 +3 |
+| 跑步机（2 台） | 连按 E，把速度维持在绿区 | 耐力 +4 |
+| 沙袋 | 沙袋荡回来、指针进绿区时按 E | 爆发 +3 |
+
+- 训练量满 100%（40 点）即胜利；每完成一组获得 8 秒"隐身"（被发现速度 -40%）。
+- 三个健身房常客会抢器械。对方刚上器械时不能挤，过了 3 秒可以按 E 挤开，但会很吵，产品经理会转头看过来。
+- 产品经理按固定路线走，每到一个点停下左右扫视。被黄色视野照到，警戒条上涨；满了被抓回门口、扣 15 秒，第 3 次被抓本局结束。
+- 柜子、柱子挡视线，旁边的浅绿色区域是掩护点，躲在里面警戒涨得慢、退得快。在器械上训练时更显眼。
+- 结算评级：S（零被抓且用时 ≤ 108 秒）/ A（零被抓）/ B / C / D。
+
+## 开发
+
+```powershell
+powershell -File tools/test.ps1                 # 全部测试（36 个），有任何脚本错误也算失败
+powershell -File tools/shot.ps1 out.png --autostart --autoplay --shot-frames=600   # 截图
+powershell -File tools/godot.ps1 --import       # 刷新导入/类缓存
+```
+
+- `scripts/`：`core`（autoload、主场景、音效、自动游玩机器人）、`stations`（器械与小游戏）、`actors`（玩家、常客）、`stealth`（视野、巡逻、警戒）、`level`、`ui`
+- `data/stations/*.tres`：每种器械一份数据；新增器械只加 `.tres` 和美术，不改代码
+- 设计文档：`docs/DEMO_SCOPE.md`（本 Demo 范围）、`docs/PLAN.md`、`docs/OPUS_BRIEF.md`；进度见 `docs/STATUS.md`
+- 美术：玩家的四个动作姿势是 AI 生成（Codex），流水线在 `tools/art/`，说明见 `assets/characters/generated/README.md`
+
+## 素材授权
+
+器械和 NPC 的原画来自 LimeZu Modern Interiors（付费素材），**不在仓库里**（见 `.gitignore`）。没有这些文件时游戏会自动改用色块占位，照样能玩。

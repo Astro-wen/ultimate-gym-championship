@@ -24,6 +24,7 @@ GameState="*res://scripts/core/game_state.gd"
 
 window/size/viewport_width=960
 window/size/viewport_height=540
+window/size/mode=2
 window/stretch/mode="canvas_items"
 
 [editor_plugins]
