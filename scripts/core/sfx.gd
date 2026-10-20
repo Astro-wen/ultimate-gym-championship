@@ -75,8 +75,10 @@ func play(id: StringName) -> void:
 
 
 func _process(delta: float) -> void:
+	var paused: bool = get_tree().paused
+	_bgm.stream_paused = paused
 	# heartbeat speeds up as the alert rises
-	if not GameState.is_running() or _alert < 0.35:
+	if paused or not GameState.is_running() or _alert < 0.35:
 		_heartbeat_t = 0.0
 		return
 	_heartbeat_t -= delta

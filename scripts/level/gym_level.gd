@@ -17,7 +17,7 @@ const WALL: float = 24.0
 ]
 @export var station_positions: Array[Vector2] = [
 	Vector2(170, 215),
-	Vector2(420, 185),
+	Vector2(380, 185),
 	Vector2(650, 215),
 	Vector2(740, 215),
 	Vector2(870, 360),
