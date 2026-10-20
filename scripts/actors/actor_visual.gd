@@ -9,14 +9,49 @@ var walk_cell: Vector2i = Vector2i(48, 48)
 ## Sheet origin (in cells) of this character inside a multi-character sheet.
 var walk_origin: Vector2i = Vector2i.ZERO
 var actor: ActorBody
-## Draw the station's AI pose sprites (the player); NPCs use their own sheet.
+## Draw the station's AI pose sprites (all of them are the player character).
 var use_pose_art: bool = false
+## NPCs reuse the player's pose art with the white shirt recolored to theirs.
+var shirt_swap: bool = false
 var _walk_t: float = 0.0
+var _swap_on: bool = false
+
+const SWAP_SHADER_CODE: String = """
+shader_type canvas_item;
+uniform bool enabled = false;
+uniform vec4 shirt : source_color = vec4(1.0);
+void fragment() {
+	vec4 c = COLOR;
+	float mx = max(c.r, max(c.g, c.b));
+	float mn = min(c.r, min(c.g, c.b));
+	if (enabled && c.a > 0.5 && mx > 0.72 && mx - mn < 0.12) {
+		COLOR.rgb = shirt.rgb * (0.55 + 0.45 * mx);
+	}
+}
+"""
+static var _swap_shader: Shader
+
+
+func _ensure_swap_material() -> void:
+	if shirt_swap and material == null:
+		if _swap_shader == null:
+			_swap_shader = Shader.new()
+			_swap_shader.code = SWAP_SHADER_CODE
+		var m := ShaderMaterial.new()
+		m.shader = _swap_shader
+		material = m
 
 
 func _process(delta: float) -> void:
 	if actor == null:
 		return
+	_ensure_swap_material()
+	var want: bool = shirt_swap and actor.station != null
+	if want != _swap_on and material is ShaderMaterial:
+		_swap_on = want
+		var m: ShaderMaterial = material
+		m.set_shader_parameter(&"enabled", want)
+		m.set_shader_parameter(&"shirt", actor.body_color)
 	if actor.speed_kind != ActorBody.Speed.STILL:
 		_walk_t += delta * (12.0 if actor.speed_kind == ActorBody.Speed.SPRINT else 6.0)
 	else:

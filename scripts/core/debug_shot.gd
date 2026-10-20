@@ -7,6 +7,9 @@ extends Node
 ##   --shot=<path.png>      save a screenshot after --shot-frames (default 30), then quit
 ##   --run-frames=N         quit after N frames (for soak runs)
 ##   --autoplay             let AutoplayBot drive the player
+##   --npc-use=<i>          put GymGoer0 on station i, player next to it
+##   --pause                pause right away
+##   --end=won|caught|timeout  jump to the results screen
 
 var main: Node
 var shot_path: String = ""
@@ -42,6 +45,37 @@ static func apply_cmdline(m: Node) -> void:
 		m.add_child(bot)
 	if opts.has("use"):
 		d._use_station.call_deferred(int(opts["use"]))
+	if opts.has("npc-use"):
+		d._npc_use.call_deferred(int(opts["npc-use"]))
+	if opts.has("pause"):
+		d._pause.call_deferred()
+	if opts.has("end"):
+		d._end.call_deferred(String(opts["end"]))
+
+
+func _npc_use(idx: int) -> void:
+	var lvl: GymLevel = main.get(&"level")
+	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
+	var st: Station = lvl.stations[idx]
+	g.begin_use(st)
+	(main.get(&"player") as Player).global_position = st.interact_point()
+
+
+func _pause() -> void:
+	get_tree().paused = true
+	(main.get(&"hud") as Hud).paused = true
+
+
+func _end(kind: String) -> void:
+	match kind:
+		"won":
+			GameState.record_set(&"debug", &"strength", GameState.training_goal)
+			GameState.finish(GameState.State.WON)
+		"caught":
+			GameState.detections = 3
+			GameState.finish(GameState.State.CAUGHT)
+		_:
+			GameState.finish(GameState.State.TIMEOUT)
 
 
 func _use_station(idx: int) -> void:

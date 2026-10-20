@@ -29,6 +29,8 @@ func _ready() -> void:
 	super._ready()
 	add_to_group(&"npc")
 	add_to_group(&"gym_goers")
+	visual.use_pose_art = true
+	visual.shirt_swap = true
 	collision_layer = Layers.NPC
 	collision_mask = Layers.WORLD
 	_set_mode(Mode.REST)
