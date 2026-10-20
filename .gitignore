@@ -1,0 +1,23 @@
+# 原始素材包与受授权限制的素材，不进仓库
+rpgmaker素材/
+assets/sheets/
+assets/characters/parts/
+assets/anim/
+assets/sprites/*/*_orig_*
+
+# AI 原始输出和临时文件
+assets/generated/_raw/
+
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+.mono/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Godot 导入缓存
+*.import
+.godot/
