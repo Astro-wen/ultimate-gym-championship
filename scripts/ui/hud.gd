@@ -28,7 +28,6 @@ func _ready() -> void:
 	add_child(_canvas)
 	_font = ThemeDB.fallback_font
 	Events.alert_changed.connect(func(v: float) -> void: alert = v)
-	Events.rep_completed.connect(_on_rep)
 	Events.station_use_finished.connect(_on_set_done)
 	Events.player_detected.connect(func(_by: Node) -> void: flash("被产品经理发现了！"))
 
@@ -36,11 +35,6 @@ func _ready() -> void:
 func flash(text: String, secs: float = 1.6) -> void:
 	_flash = text
 	_flash_t = secs
-
-
-func _on_rep(_st: Node, who: Node, good: bool) -> void:
-	if who == player:
-		flash("漂亮！" if good else "失误…", 0.6)
 
 
 func _on_set_done(st: Node, who: Node) -> void:
@@ -66,6 +60,8 @@ func _bar(r: Rect2, v: float, col: Color, zone: Vector2 = Vector2(-1, -1)) -> vo
 	if zone.x >= 0.0:
 		_canvas.draw_rect(Rect2(r.position.x + r.size.x * zone.x, r.position.y, r.size.x * (zone.y - zone.x), r.size.y), Color(0.25, 0.6, 0.3))
 	_canvas.draw_rect(Rect2(r.position, Vector2(r.size.x * clampf(v, 0.0, 1.0), r.size.y)), col)
+	if zone.x >= 0.0:
+		_canvas.draw_rect(Rect2(r.position.x + r.size.x * zone.x, r.position.y, r.size.x * (zone.y - zone.x), r.size.y), Color(0.4, 1.0, 0.5), false, 2.0)
 	_canvas.draw_rect(r, Color(0.9, 0.9, 0.95), false, 1.0)
 
 
@@ -185,4 +181,4 @@ func _draw_results(vp: Vector2) -> void:
 	_text(Vector2(x + 60, 290), "用时  %d:%02d" % [int(GameState.elapsed) / 60, int(GameState.elapsed) % 60], 18)
 	_text(Vector2(x + 60, 320), "训练量  %d%%" % int(GameState.training_progress() * 100.0), 18)
 	_text(Vector2(x + 60, 350), "被发现  %d 次" % GameState.detections, 18)
-	_text(Vector2(x, 405), "按 R 再来一局", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	_text(Vector2(x, 405), "按 E 或 R 再来一局", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)

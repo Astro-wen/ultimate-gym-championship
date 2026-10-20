@@ -40,7 +40,7 @@ func _on_spotted(by: Patroller) -> void:
 	GameState.detections += 1
 	Events.player_detected.emit(by)
 	player.end_use(&"caught")
-	player.global_position = level.player_spawn
+	player.snap_to(level.player_spawn)
 	player.facing = Vector2.UP
 	for n: Node in get_tree().get_nodes_in_group(&"patrollers"):
 		var pt: Patroller = n as Patroller

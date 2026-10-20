@@ -15,6 +15,10 @@ var level: GymLevel
 var player: Player
 var hud: Hud
 var director: StealthDirector
+## When the results screen appeared (ms); E restarts only after a short delay
+## so a key mashed during the last rep doesn't skip the results.
+var _ended_ms: int = 0
+const RESULTS_INPUT_DELAY_MS: int = 1200
 
 
 func _ready() -> void:
@@ -37,6 +41,12 @@ func _ready() -> void:
 	hud.player = player
 	add_child(hud)
 	Sfx.attach(self)
+	var cam := ShakeCamera.new()
+	cam.name = "Camera"
+	cam.position = GymLevel.ROOM * 0.5
+	cam.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
+	add_child(cam)
+	Events.run_finished.connect(func(_r: Dictionary) -> void: _ended_ms = Time.get_ticks_msec())
 	DebugShot.apply_cmdline(self)
 
 
@@ -76,6 +86,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"pause") and GameState.is_running():
 		get_tree().paused = not get_tree().paused
 		hud.paused = get_tree().paused
+	elif event.is_action_pressed(&"interact") and _results_ready():
+		restart()
 	elif event.is_action_pressed(&"interact") and GameState.state == GameState.State.READY:
 		GameState.start_run()
 		get_viewport().set_input_as_handled()
@@ -86,3 +98,8 @@ func restart() -> void:
 	GameState.reset()
 	Station.clear_all_claims()
 	get_tree().reload_current_scene()
+
+
+func _results_ready() -> bool:
+	var ended: bool = GameState.state != GameState.State.READY and not GameState.is_running()
+	return ended and Time.get_ticks_msec() - _ended_ms >= RESULTS_INPUT_DELAY_MS

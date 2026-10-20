@@ -22,6 +22,7 @@ var _queue: Array[Node] = []
 var _clock: float = 0.0
 var _body: StaticBody2D
 var _tex: Texture2D
+var _focused: bool = false
 
 
 static func station_of(who: Node) -> Station:
@@ -53,6 +54,8 @@ func _process(delta: float) -> void:
 
 func tick(delta: float) -> void:
 	_clock += delta
+	if _focused:
+		queue_redraw()
 
 
 func _exit_tree() -> void:
@@ -235,3 +238,43 @@ func _draw() -> void:
 		var fp: Vector2 = data.footprint
 		draw_rect(Rect2(Vector2(-fp.x * 0.5, -fp.y - 16), Vector2(fp.x, fp.y + 16)), data.placeholder_color)
 		draw_rect(Rect2(Vector2(-fp.x * 0.5, -fp.y - 16), Vector2(fp.x, fp.y + 16)), Color(0.1, 0.1, 0.15), false, 2.0)
+	if _focused:
+		_draw_focus_marker()
+
+
+# --- focus marker ----------------------------------------------------------
+
+## Shows/hides the bouncing "E" marker (set by the player).
+func set_focused(on: bool) -> void:
+	if _focused == on:
+		return
+	_focused = on
+	queue_redraw()
+
+
+## Distance from `p` to this station's solid footprint (0 if inside).
+func distance_to_point(p: Vector2) -> float:
+	if data == null:
+		return INF
+	var fp: Vector2 = data.footprint
+	var r := Rect2(global_position + Vector2(-fp.x * 0.5, -fp.y), fp)
+	var q := Vector2(clampf(p.x, r.position.x, r.end.x), clampf(p.y, r.position.y, r.end.y))
+	return p.distance_to(q)
+
+
+func _visual_height() -> float:
+	if data.base_region.has_area():
+		return data.base_region.size.y
+	return data.footprint.y + 16.0
+
+
+func _draw_focus_marker() -> void:
+	var font: Font = ThemeDB.fallback_font
+	var bob: float = sin(_clock * 6.0) * 2.0
+	var c := Vector2(0, -_visual_height() - 14.0 + bob)
+	var key := Rect2(c - Vector2(9, 9), Vector2(18, 18))
+	draw_rect(key, Color(0.98, 0.95, 0.8))
+	draw_rect(key, Color(0.15, 0.15, 0.2), false, 2.0)
+	draw_string(font, c + Vector2(-9, 5), "E", HORIZONTAL_ALIGNMENT_CENTER, 18, 14, Color(0.15, 0.15, 0.2))
+	var col := Color(0.3, 1.0, 0.5) if is_free() else Color(1.0, 0.7, 0.3)
+	draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 12), c + Vector2(5, 12), c + Vector2(0, 17)]), col)
