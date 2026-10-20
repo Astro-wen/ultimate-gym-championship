@@ -16,6 +16,9 @@ func _run() -> void:
 	var files: PackedStringArray = DirAccess.get_files_at("res://tests")
 	files.sort()
 	for f: String in files:
+		var filter: String = OS.get_environment("UGC_TEST_FILTER")
+		if filter != "" and not f.contains(filter):
+			continue
 		if f.begins_with("test_") and f.ends_with(".gd") and f != "test_case.gd":
 			await _run_file("res://tests/" + f)
 	print("\n%d passed, %d failed" % [_passed, _failed])

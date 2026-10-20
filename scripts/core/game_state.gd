@@ -5,7 +5,7 @@ enum State { READY, RUNNING, CAUGHT, WON, TIMEOUT }
 
 @export var time_limit: float = 180.0
 ## Training points needed to finish the day's workout.
-@export var training_goal: int = 30
+@export var training_goal: int = 40
 
 var state: State = State.READY
 var elapsed: float = 0.0

@@ -6,6 +6,7 @@ extends Node
 ##   --use=<station index>  put the player on that station
 ##   --shot=<path.png>      save a screenshot after --shot-frames (default 30), then quit
 ##   --run-frames=N         quit after N frames (for soak runs)
+##   --autoplay             let AutoplayBot drive the player
 
 var main: Node
 var shot_path: String = ""
@@ -34,6 +35,11 @@ static func apply_cmdline(m: Node) -> void:
 	if opts.has("warp"):
 		var xy: PackedStringArray = String(opts["warp"]).split(",")
 		m.get(&"player").global_position = Vector2(float(xy[0]), float(xy[1]))
+	if opts.has("autoplay"):
+		var bot := AutoplayBot.new()
+		bot.player = m.get(&"player")
+		bot.level = m.get(&"level")
+		m.add_child(bot)
 	if opts.has("use"):
 		d._use_station.call_deferred(int(opts["use"]))
 
