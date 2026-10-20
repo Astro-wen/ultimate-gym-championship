@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="StationData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
-[ext_resource type="Texture2D" path="res://assets/characters/generated/tall/char_worker_treadmill_4f_ai_v1.png" id="2_pose"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/v2/char_player_treadmill_4f_ai_v2.png" id="2_pose"]
 
 [resource]
 script = ExtResource("1_sd")
@@ -23,8 +23,8 @@ base_texture_path = "res://assets/sheets/interiors/int05_gym_equipment_768.png"
 base_region = Rect2(664, 612, 64, 116)
 pose_texture = ExtResource("2_pose")
 pose_frames = 4
-pose_frame_size = Vector2i(64, 96)
-pose_anchor = Vector2(34, 96)
+pose_frame_size = Vector2i(72, 96)
+pose_anchor = Vector2(36, 96)
 pose_loop = true
 anchor_offsets = Array[Vector2]([Vector2(0, -14)])
 exit_offset = Vector2(0, 26)
