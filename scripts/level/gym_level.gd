@@ -42,14 +42,21 @@ const WALL: float = 24.0
 	Vector2(480, 120), Vector2(200, 300), Vector2(480, 450), Vector2(800, 300),
 ]
 
+## Navigation grid cell size and the clearance kept around solids.
+@export var nav_cell: int = 12
+@export var nav_clearance: float = 10.0
+
 var world: Node2D
 var stations: Array[Station] = []
+var nav: AStarGrid2D
 
 
 func _ready() -> void:
 	world = Node2D.new()
 	world.name = "World"
 	world.y_sort_enabled = true
+	# actors above the floor; view cones (z -1 inside world) sit between
+	world.z_index = 1
 	add_child(world)
 	_build_walls()
 	for i: int in blockers.size():
@@ -61,7 +68,83 @@ func _ready() -> void:
 	for r: Rect2 in covers:
 		_add_cover(r)
 	_build_stations()
+	_build_nav()
 	queue_redraw()
+
+
+# --- navigation ----------------------------------------------------------
+
+func solid_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = [
+		Rect2(0, 0, ROOM.x, WALL_TOP),
+		Rect2(0, ROOM.y - WALL, ROOM.x, WALL),
+		Rect2(0, 0, WALL, ROOM.y),
+		Rect2(ROOM.x - WALL, 0, WALL, ROOM.y),
+	]
+	out.append_array(blockers)
+	for st: Station in stations:
+		var fp: Vector2 = st.data.footprint
+		out.append(Rect2(st.position + Vector2(-fp.x * 0.5, -fp.y), fp))
+	return out
+
+
+func _build_nav() -> void:
+	nav = AStarGrid2D.new()
+	nav.region = Rect2i(0, 0, int(ROOM.x) / nav_cell, int(ROOM.y) / nav_cell)
+	nav.cell_size = Vector2(nav_cell, nav_cell)
+	nav.offset = Vector2(nav_cell, nav_cell) * 0.5
+	nav.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	nav.update()
+	var solids: Array[Rect2] = solid_rects()
+	for y: int in nav.region.size.y:
+		for x: int in nav.region.size.x:
+			var c: Vector2 = nav.get_point_position(Vector2i(x, y))
+			for r: Rect2 in solids:
+				if r.grow(nav_clearance).has_point(c):
+					nav.set_point_solid(Vector2i(x, y), true)
+					break
+
+
+func _cell_of(p: Vector2) -> Vector2i:
+	var c := Vector2i(int(p.x) / nav_cell, int(p.y) / nav_cell)
+	return c.clamp(nav.region.position, nav.region.end - Vector2i.ONE)
+
+
+func is_walkable(p: Vector2) -> bool:
+	return not nav.is_point_solid(_cell_of(p))
+
+
+## Closest walkable point to `p` (searches outward in rings).
+func nearest_walkable(p: Vector2) -> Vector2:
+	var c0: Vector2i = _cell_of(p)
+	if not nav.is_point_solid(c0):
+		return p
+	for r: int in range(1, 20):
+		var best: Vector2i = Vector2i(-1, -1)
+		var best_d: float = INF
+		for dy: int in range(-r, r + 1):
+			for dx: int in range(-r, r + 1):
+				if absi(dx) != r and absi(dy) != r:
+					continue
+				var c: Vector2i = c0 + Vector2i(dx, dy)
+				if nav.is_in_boundsv(c) and not nav.is_point_solid(c):
+					var d: float = nav.get_point_position(c).distance_squared_to(p)
+					if d < best_d:
+						best_d = d
+						best = c
+		if best.x >= 0:
+			return nav.get_point_position(best)
+	return p
+
+
+## Walkable path from `from` to `to` (world points). Empty if unreachable.
+func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
+	var a: Vector2i = _cell_of(nearest_walkable(from))
+	var b: Vector2i = _cell_of(nearest_walkable(to))
+	var path: PackedVector2Array = nav.get_point_path(a, b)
+	if path.size() > 0:
+		path[path.size() - 1] = nearest_walkable(to)
+	return path
 
 
 func _build_walls() -> void:

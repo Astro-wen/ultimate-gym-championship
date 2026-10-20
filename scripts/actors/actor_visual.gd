@@ -33,6 +33,14 @@ func _draw() -> void:
 		_draw_walk_sheet()
 	else:
 		_draw_standing()
+	var b: String = actor.bubble()
+	if b != "":
+		var font: Font = ThemeDB.fallback_font
+		var top: Vector2 = Vector2(0, -58)
+		draw_circle(top, 10.0, Color.WHITE)
+		draw_arc(top, 10.0, 0.0, TAU, 20, Color(0.1, 0.1, 0.15), 1.5)
+		var col: Color = Color(0.9, 0.15, 0.1) if b != "?" else Color(0.9, 0.6, 0.1)
+		draw_string(font, top + Vector2(-10, 6), b, HORIZONTAL_ALIGNMENT_CENTER, 20, 16, col)
 
 
 func draw_ellipse_shadow() -> void:
