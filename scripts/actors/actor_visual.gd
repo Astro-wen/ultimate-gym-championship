@@ -13,6 +13,9 @@ var actor: ActorBody
 var use_pose_art: bool = false
 ## NPCs reuse the player's pose art with the white shirt recolored to theirs.
 var shirt_swap: bool = false
+## Character id for per-character pose strips (see LocalArt.pose_path).
+var pose_char: StringName = &""
+var _own_poses: Dictionary = {}   # StringName station id -> Texture2D (or null)
 var _walk_t: float = 0.0
 var _swap_on: bool = false
 
@@ -46,7 +49,7 @@ func _process(delta: float) -> void:
 	if actor == null:
 		return
 	_ensure_swap_material()
-	var want: bool = shirt_swap and actor.station != null
+	var want: bool = shirt_swap and actor.station != null and _own_pose(actor.station.data) == null
 	if want != _swap_on and material is ShaderMaterial:
 		_swap_on = want
 		var m: ShaderMaterial = material
@@ -161,11 +164,13 @@ func _draw_head(c: Vector2) -> void:
 
 func _draw_pose(d: StationData) -> void:
 	var t: float = clampf(actor.pose_amount, 0.0, 1.0)
-	if use_pose_art and d.pose_texture != null and d.pose_frames > 0:
+	var own: Texture2D = _own_pose(d)
+	var tex: Texture2D = own if own != null else (d.pose_texture if use_pose_art else null)
+	if tex != null and d.pose_frames > 0:
 		var n: int = d.pose_frames
 		var frame: int = (int(t * n) % n) if d.pose_loop else clampi(int(round(t * float(n - 1))), 0, n - 1)
 		var fs := Vector2(d.pose_frame_size)
-		draw_texture_rect_region(d.pose_texture, Rect2(-d.pose_anchor, fs), Rect2(Vector2(frame * fs.x, 0), fs))
+		draw_texture_rect_region(tex, Rect2(-d.pose_anchor, fs), Rect2(Vector2(frame * fs.x, 0), fs))
 		return
 	if walk_sheet != null:
 		_draw_pose_sheet(d, t)
@@ -206,3 +211,12 @@ func _draw_pose(d: StationData) -> void:
 			draw_circle(Vector2(8 + reach, -22), 3.5, Color(0.85, 0.15, 0.15))
 		_:
 			_draw_standing()
+
+
+## This character's own pose strip for station `d` (v2 art), cached; null if absent.
+func _own_pose(d: StationData) -> Texture2D:
+	if pose_char == &"" or d == null:
+		return null
+	if not _own_poses.has(d.id):
+		_own_poses[d.id] = LocalArt.tex(LocalArt.pose_path(pose_char, d))
+	return _own_poses[d.id]

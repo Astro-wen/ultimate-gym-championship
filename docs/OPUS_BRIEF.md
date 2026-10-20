@@ -212,7 +212,7 @@ $prompt | codex exec --skip-git-repo-check -s workspace-write -C "D:\game champi
 - 模型默认是 `gpt-6.1-sol`，不用指定。
 - Codex 先把图保存到 `~\.codex\generated_images\...`，提示词里要明确让它**复制到目标路径**。
 - 它的沙箱写不了项目外的目录；`-C` 指向项目根目录即可。
-- **只用文字描述风格，不要把 LimeZu 素材作为参考图发给它**（授权考虑）。
+- **可以把 LimeZu 角色帧作为参考图发给 Codex**（2026-10-20 用户授权：授权条款只禁止转售/再分发；OpenAI 数据共享已关闭）。参考图只在本地临时目录使用，不提交；产出的是衍生素材，可以进仓库。
 - 一次调用约 20k tokens、数十秒到几分钟，可以并行多个。
 
 ### 5.2 实测结果与问题（卧推 4 帧样张）
@@ -331,7 +331,7 @@ Start-Process $g -ArgumentList "--headless","--path","D:\game championship","-s"
 
 1. 不要删除或移动 `rpgmaker素材/`，也不要在里面生成任何文件。
 2. 不要用 `git push`、`git push --force`、`git reset --hard`、改写历史，除非用户明确说。
-3. 不要把 LimeZu 素材作为参考图发给 Codex 或任何外部服务。
+3. LimeZu 素材只可作为参考图发给 Codex（见 5.1），不得发给其他外部服务，不得提交进仓库。
 4. 不要新增大型第三方依赖或插件（Godot AI 之外），需要先问用户。
 5. 不要用 `-f` 强行添加被 `.gitignore` 忽略的文件。
 6. 不要为了让测试通过而改测试断言；测试不对时，先说明为什么，再改。

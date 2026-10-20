@@ -31,3 +31,8 @@ static func apply_skin(v: ActorVisual, set_i: int, index: int) -> bool:
 	v.walk_cell = CHAR_CELL
 	v.walk_origin = Vector2i((index % 4) * 3, (index / 4) * 4)
 	return true
+
+
+## Per-character exercise pose strip (committed art, derived from LimeZu refs).
+static func pose_path(char_id: StringName, d: StationData) -> String:
+	return "res://assets/characters/generated/v2/char_%s_%s_%df_ai_v2.png" % [char_id, d.id, d.pose_frames]

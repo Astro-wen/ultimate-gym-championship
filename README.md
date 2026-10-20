@@ -46,6 +46,8 @@ powershell -File tools/godot.ps1 --import       # 刷新导入/类缓存
 - 设计文档：`docs/DEMO_SCOPE.md`（本 Demo 范围）、`docs/PLAN.md`、`docs/OPUS_BRIEF.md`；进度见 `docs/STATUS.md`
 - 美术：玩家的四个动作姿势是 AI 生成（Codex），流水线在 `tools/art/`，说明见 `assets/characters/generated/README.md`
 
-## 素材授权
+## 素材与鸣谢
 
-器械和 NPC 的原画来自 LimeZu Modern Interiors（付费素材），**不在仓库里**（见 `.gitignore`）。没有这些文件时游戏会自动改用色块占位，照样能玩。
+- 室内、器械与角色原画：**LimeZu — Modern Interiors**（https://limezu.itch.io/moderninteriors），付费素材，按其授权要求署名。原素材**不在仓库里**（见 `.gitignore`），没有这些文件时游戏会自动改用色块占位，照样能玩。
+- 角色的健身动作图：以 LimeZu 角色为参考，由 AI（Codex）绘制后按原素材的 16px×3 像素网格和调色板处理，属于本项目的衍生素材。
+- 音效与 BGM：代码实时合成。

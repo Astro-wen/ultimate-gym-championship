@@ -159,6 +159,7 @@ func _draw_intro(vp: Vector2) -> void:
 		_text(Vector2(x + 40, 215 + i * 30), lines[i], 16, Color(0.85, 0.9, 1.0))
 	var blink: bool = int(Time.get_ticks_msec() / 500) % 2 == 0
 	_text(Vector2(x, 435), "按 E 开始" if blink else "", 22, GOOD, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	_text(Vector2(0, vp.y - 12), "美术素材：LimeZu《Modern Interiors》 · 角色动作由 AI 基于原素材绘制", 12, Color(0.75, 0.75, 0.8), HORIZONTAL_ALIGNMENT_CENTER, vp.x)
 
 
 func _draw_results(vp: Vector2) -> void:
