@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"dumbbell_curl"
+display_name = "哑铃弯举"
+use_time = 6.0
+capacity = 1
+minigame = &"alternate"
+reps_per_set = 6
+minigame_params = {"window": 1.2}
+stat = &"strength"
+stat_gain = 3
+buff_kind = &"stealthy"
+buff_duration = 8.0
+noise = 0.3
+exposure = 1.2
+anim_name = &"dumbbell_curl"
+anchor_offsets = Array[Vector2]([Vector2(0, 26)])
+exit_offset = Vector2(0, 34)
+footprint = Vector2(56, 20)
+placeholder_color = Color(0.35, 0.55, 0.75, 1)

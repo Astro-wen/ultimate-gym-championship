@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"treadmill"
+display_name = "跑步机"
+use_time = 8.0
+capacity = 1
+minigame = &"rhythm"
+reps_per_set = 5
+minigame_params = {"tap_boost": 0.12, "decay": 0.35, "zone_lo": 0.45, "zone_hi": 0.75, "seconds_per_rep": 1.5}
+stat = &"stamina"
+stat_gain = 4
+buff_kind = &"stealthy"
+buff_duration = 8.0
+noise = 0.2
+exposure = 1.6
+anim_name = &"treadmill"
+anchor_offsets = Array[Vector2]([Vector2(0, -16)])
+exit_offset = Vector2(0, 30)
+footprint = Vector2(40, 40)
+placeholder_color = Color(0.35, 0.65, 0.4, 1)

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"bench_press"
+display_name = "卧推"
+use_time = 7.0
+capacity = 1
+minigame = &"hold_release"
+reps_per_set = 5
+minigame_params = {"charge_rate": 0.9, "zone_lo": 0.62, "zone_hi": 0.86}
+stat = &"strength"
+stat_gain = 4
+buff_kind = &"stealthy"
+buff_duration = 8.0
+noise = 0.5
+exposure = 1.4
+anim_name = &"bench_press"
+anchor_offsets = Array[Vector2]([Vector2(0, -14)])
+exit_offset = Vector2(0, 30)
+footprint = Vector2(40, 40)
+placeholder_color = Color(0.75, 0.35, 0.3, 1)

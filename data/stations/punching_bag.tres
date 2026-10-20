@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"punching_bag"
+display_name = "沙袋"
+use_time = 5.0
+capacity = 1
+minigame = &"timing"
+reps_per_set = 5
+minigame_params = {"swing_speed": 0.9, "zone_lo": 0.78, "zone_hi": 0.95}
+stat = &"power"
+stat_gain = 3
+buff_kind = &"stealthy"
+buff_duration = 8.0
+noise = 0.8
+exposure = 1.3
+anim_name = &"punching_bag"
+anchor_offsets = Array[Vector2]([Vector2(-30, 4)])
+exit_offset = Vector2(-30, 34)
+footprint = Vector2(24, 16)
+placeholder_color = Color(0.8, 0.6, 0.25, 1)

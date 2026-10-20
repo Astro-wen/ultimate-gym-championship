@@ -21,3 +21,6 @@ Thumbs.db
 # Godot 导入缓存
 *.import
 .godot/
+
+# Claude Code worktrees / local settings
+.claude/
