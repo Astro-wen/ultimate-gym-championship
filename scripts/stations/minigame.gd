@@ -9,6 +9,8 @@ var target_reps: int = 5
 var reps: int = 0
 var misses: int = 0
 var params: Dictionary = {}
+## Station-specific hint that replaces hint() in the UI when set.
+var hint_override: String = ""
 
 
 static func create(d: StationData) -> Minigame:
@@ -27,6 +29,7 @@ static func create(d: StationData) -> Minigame:
 			g = HoldReleaseGame.new()
 	g.target_reps = maxi(d.reps_per_set, 1)
 	g.params = d.minigame_params
+	g.hint_override = d.hint_text
 	g._setup()
 	return g
 
@@ -80,3 +83,8 @@ func hint() -> String:
 ## 0..1 position for the pose animation (0 = rest, 1 = full effort).
 func pose() -> float:
 	return meter()
+
+
+## The hint line the UI shows.
+func hint_line() -> String:
+	return hint_override if hint_override != "" else hint()

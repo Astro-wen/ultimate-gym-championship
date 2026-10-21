@@ -28,6 +28,15 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 ## Grows +5% per detection (capped at +30%).
 @export var difficulty: float = 1.0
 @export var view_range: float = 264.0
+@export var view_angle: float = 70.0
+## Stationary watchers (desk colleagues, receptionist): cycle through
+## (look angle deg, seconds, view range px) instead of walking a route.
+var look_schedule: Array[Vector3] = []
+## Body painted by the level art (receptionist behind the counter).
+var hide_body: bool = false
+var _sched_i: int = 0
+var _sched_t: float = 0.0
+var _sched_range: float = 0.0
 ## Seconds during which awareness cannot rise (after a detection).
 var grace: float = 0.0
 ## Spot where the player can't be seen for `safe_t` more seconds (respawn point).
@@ -37,7 +46,7 @@ var safe_t: float = 0.0
 var _noise_cd: float = 0.0
 
 var mode: Mode = Mode.LOOK
-var level: GymLevel
+var level: Level
 var points: Array[Vector2] = []
 var cone: VisionCone
 var awareness: float = 0.0
@@ -67,6 +76,12 @@ func _ready() -> void:
 	add_child(cone)
 	Events.noise_made.connect(_on_noise)
 	_timer = wait_time
+	if hide_body:
+		visual.visible = false
+	if not look_schedule.is_empty():
+		_look_angle = deg_to_rad(look_schedule[0].x)
+		_sched_range = look_schedule[0].z
+		_sched_t = look_schedule[0].y
 
 
 func reset_to_start() -> void:
@@ -87,6 +102,11 @@ func _physics_process(delta: float) -> void:
 		speed_kind = Speed.STILL
 		_update_cone(delta)
 		return
+	if not look_schedule.is_empty() and mode != Mode.INVESTIGATE:
+		_run_schedule(delta)
+		_update_cone(delta)
+		_update_awareness(delta)
+		return
 	match mode:
 		Mode.WALK, Mode.RETURN:
 			if _follow():
@@ -102,7 +122,9 @@ func _physics_process(delta: float) -> void:
 				_next_point()
 		Mode.INVESTIGATE:
 			_timer -= delta
-			if _timer <= 0.0:
+			if _timer <= 0.0 and not look_schedule.is_empty():
+				mode = Mode.LOOK
+			elif _timer <= 0.0:
 				_path = level.find_path(global_position, points[_point_i])
 				_path_i = 0
 				mode = Mode.RETURN
@@ -140,8 +162,9 @@ func _update_cone(_delta: float) -> void:
 	cone.rotation = _look_angle
 	facing = Vector2.RIGHT.rotated(_look_angle)
 	cone.heat = awareness
-	cone.range_px = view_range * difficulty
-	cone.angle_deg = 70.0 * minf(difficulty, 1.15)
+	var r: float = _sched_range if not look_schedule.is_empty() else view_range
+	cone.range_px = r * difficulty
+	cone.angle_deg = view_angle * minf(difficulty, 1.15)
 
 
 func _on_noise(at: Vector2, loudness: float) -> void:
@@ -212,3 +235,21 @@ func bubble() -> String:
 	if awareness > 0.15 or mode == Mode.INVESTIGATE:
 		return "?"
 	return ""
+
+
+## Stationary watcher: turn smoothly to each scheduled direction, hold it.
+func _run_schedule(delta: float) -> void:
+	velocity = Vector2.ZERO
+	speed_kind = Speed.STILL
+	_sched_t -= delta
+	if _sched_t <= 0.0:
+		_sched_i = (_sched_i + 1) % look_schedule.size()
+		_sched_t = look_schedule[_sched_i].y
+	var target: float = deg_to_rad(look_schedule[_sched_i].x)
+	_look_angle = lerp_angle(_look_angle, target, minf(delta * 6.0, 1.0))
+	_sched_range = lerpf(_sched_range, look_schedule[_sched_i].z, minf(delta * 6.0, 1.0))
+
+
+## Seconds until the current look direction changes (for tells/tests).
+func schedule_time_left() -> float:
+	return _sched_t

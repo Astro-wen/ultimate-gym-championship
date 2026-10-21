@@ -1,5 +1,6 @@
 extends Node2D
-## Root of the demo. Builds the level, actors and HUD; owns start/pause/restart.
+## Root of the demo. Shows the level menu, builds the chosen level, actors and
+## HUD; owns start/pause/restart/back-to-menu.
 
 ## Placeholder colors (used when the licensed character sheets are absent)
 ## and walk-sheet skins [set, index] (used when present).
@@ -13,25 +14,37 @@ const GOER_LOOKS: Array[Dictionary] = [
 ]
 const PLAYER_SKIN: Array[int] = [0, 6]
 const PM_SKIN: Array[int] = [1, 0]
+## When the results screen appeared (ms); E restarts only after a short delay
+## so a key mashed during the last rep doesn't skip the results.
+const RESULTS_INPUT_DELAY_MS: int = 1200
 
-var level: GymLevel
+var level: Level
 var player: Player
 var hud: Hud
 var director: StealthDirector
-## When the results screen appeared (ms); E restarts only after a short delay
-## so a key mashed during the last rep doesn't skip the results.
 var _ended_ms: int = 0
-const RESULTS_INPUT_DELAY_MS: int = 1200
+
+
+## Level for an id; the menu shows over the office.
+static func make_level(id: StringName) -> Level:
+	if id == &"gym":
+		return GymLevel.new()
+	return OfficeLevel.new()
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# close via quit_game() so audio is released first (no leak warnings)
+	get_tree().auto_accept_quit = false
 	GameState.reset()
 	Station.clear_all_claims()
-	level = GymLevel.new()
+	DebugShot.level_from_cmdline()
+	level = make_level(GameState.selected_level)
 	level.name = "Level"
 	level.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(level)
+	GameState.training_goal = level.goal_points
+	GameState.time_limit = level.time_limit
 	player = Player.new()
 	player.name = "Player"
 	player.position = level.player_spawn
@@ -39,20 +52,24 @@ func _ready() -> void:
 	level.world.add_child(player)
 	LocalArt.apply_skin(player.visual, PLAYER_SKIN[0], PLAYER_SKIN[1])
 	player.visual.pose_char = &"player"
-	var cup := WaterCup.new()
-	cup.name = "WaterCup"
-	cup.owner_actor = player
-	level.world.add_child(cup)
-	player.cup = cup
+	if level.level_id == &"gym":
+		var cup := WaterCup.new()
+		cup.name = "WaterCup"
+		cup.owner_actor = player
+		level.world.add_child(cup)
+		player.cup = cup
 	_spawn_npcs()
 	hud = Hud.new()
 	hud.player = player
+	hud.level = level
+	hud.menu_mode = GameState.selected_level == &""
+	hud.level_chosen.connect(choose_level)
 	add_child(hud)
 	Sfx.attach(self)
 	Juice.attach(self, level.world)
 	var cam := ShakeCamera.new()
 	cam.name = "Camera"
-	cam.position = GymLevel.ROOM * 0.5
+	cam.position = Level.ROOM * 0.5
 	cam.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
 	add_child(cam)
 	Events.run_finished.connect(func(_r: Dictionary) -> void: _ended_ms = Time.get_ticks_msec())
@@ -73,14 +90,37 @@ func _spawn_npcs() -> void:
 		level.world.add_child(g)
 		LocalArt.apply_skin(g.visual, look["skin"][0], look["skin"][1])
 		g.visual.pose_char = look["pose"]
-	var pm := Patroller.new()
-	pm.name = "ProductManager"
-	pm.level = level
-	pm.points = level.patrol_points
-	pm.position = level.patrol_points[0]
-	pm.target_player = player
-	level.world.add_child(pm)
-	LocalArt.apply_skin(pm.visual, PM_SKIN[0], PM_SKIN[1])
+	if not level.patrol_points.is_empty():
+		var pm := Patroller.new()
+		pm.name = "ProductManager"
+		pm.level = level
+		pm.points = level.patrol_points
+		pm.position = level.patrol_points[0]
+		pm.target_player = player
+		pm.base_rise = level.watch_rise
+		pm.speed_factor_still = level.still_factor
+		level.world.add_child(pm)
+		LocalArt.apply_skin(pm.visual, PM_SKIN[0], PM_SKIN[1])
+	for s: Dictionary in level.sitters:
+		var w := Patroller.new()
+		w.name = String(s.get("name", "Sitter"))
+		w.level = level
+		w.points = [s["pos"]]
+		w.position = s["pos"]
+		w.target_player = player
+		w.view_angle = float(s.get("angle", 60.0))
+		w.hide_body = bool(s.get("hide_body", false))
+		w.base_rise = level.watch_rise
+		w.speed_factor_still = level.still_factor
+		w.body_color = Color(0.55, 0.6, 0.7)
+		var sched: Array[Vector3] = []
+		for v: Vector3 in s.get("schedule", []):
+			sched.append(v)
+		w.look_schedule = sched
+		level.world.add_child(w)
+		var skin: Array = s.get("skin", [])
+		if skin.size() == 2:
+			LocalArt.apply_skin(w.visual, int(skin[0]), int(skin[1]))
 	director = StealthDirector.new()
 	director.name = "StealthDirector"
 	director.player = player
@@ -90,8 +130,12 @@ func _spawn_npcs() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if hud.menu_mode:
+		return   # the HUD menu handles its own input
 	if event.is_action_pressed(&"restart"):
 		restart()
+	elif event.is_action_pressed(&"menu") and (get_tree().paused or not GameState.is_running()):
+		choose_level(&"")
 	elif event.is_action_pressed(&"pause") and GameState.is_running():
 		get_tree().paused = not get_tree().paused
 		hud.paused = get_tree().paused
@@ -100,6 +144,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"interact") and GameState.state == GameState.State.READY:
 		GameState.start_run()
 		get_viewport().set_input_as_handled()
+
+
+## Switch level (&"" = back to the menu) and rebuild the scene.
+func choose_level(id: StringName) -> void:
+	GameState.selected_level = id
+	restart()
 
 
 func restart() -> void:
@@ -112,3 +162,17 @@ func restart() -> void:
 func _results_ready() -> bool:
 	var ended: bool = GameState.state != GameState.State.READY and not GameState.is_running()
 	return ended and Time.get_ticks_msec() - _ended_ms >= RESULTS_INPUT_DELAY_MS
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		quit_game()
+
+
+## Stop audio, let the server drop its playbacks, then quit.
+func quit_game() -> void:
+	for n: Node in get_tree().get_nodes_in_group(&"sfx"):
+		(n as Sfx).stop_all()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	get_tree().quit()

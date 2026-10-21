@@ -15,7 +15,7 @@ enum Mode { CHOOSE, WALK, QUEUE, USE, REST, ANGRY }
 @export var knockback: float = 34.0
 
 var mode: Mode = Mode.CHOOSE
-var level: GymLevel
+var level: Level
 var target: Station = null
 var rng := RandomNumberGenerator.new()
 var _path: PackedVector2Array = PackedVector2Array()

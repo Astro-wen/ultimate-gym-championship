@@ -22,6 +22,9 @@ func _run() -> void:
 		if f.begins_with("test_") and f.ends_with(".gd") and f != "test_case.gd":
 			await _run_file("res://tests/" + f)
 	print("\n%d passed, %d failed" % [_passed, _failed])
+	# let the audio server drop playbacks of freed players before exiting
+	for i: int in 3:
+		await get_tree().process_frame
 	get_tree().quit(1 if _failed > 0 else 0)
 
 

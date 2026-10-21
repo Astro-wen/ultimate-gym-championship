@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"printer"
+display_name = "打印周报"
+use_time = 4.0
+capacity = 1
+minigame = &"timing"
+reps_per_set = 4
+minigame_params = {"swing_speed": 0.8, "zone_lo": 0.75, "zone_hi": 0.95}
+stat = &"task"
+stat_gain = 1
+buff_kind = &"stealthy"
+buff_duration = 5.0
+noise = 0.45
+exposure = 1.3
+anim_name = &"printer"
+base_texture_path = "res://assets/sheets/interiors/int19_office_misc_768.png"
+base_region = Rect2(240, 60, 56, 130)
+anchor_offsets = Array[Vector2]([Vector2(0, 24)])
+exit_offset = Vector2(0, 30)
+footprint = Vector2(50, 36)
+placeholder_color = Color(0.6, 0.62, 0.6, 1)
+requires = Array[StringName]([&"desk_work"])
+hint_text = "纸快出来时（指针进绿区）按 E 接住"
+sheet_pose = &"back"
+draw_base = true
+once = true

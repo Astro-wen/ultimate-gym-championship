@@ -16,6 +16,10 @@ var _alert: float = 0.0
 
 
 static func attach(parent: Node) -> Sfx:
+	# headless (tests, CI) has a dummy audio driver that never mixes, so
+	# stopped playbacks are never released: skip sound entirely there
+	if DisplayServer.get_name() == "headless":
+		return null
 	var s := Sfx.new()
 	s.name = "Sfx"
 	s.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -24,6 +28,7 @@ static func attach(parent: Node) -> Sfx:
 
 
 func _ready() -> void:
+	add_to_group(&"sfx")
 	_sounds[&"good"] = _tone([[880.0, 0.05], [1320.0, 0.08]], 0.5, &"square")
 	_sounds[&"miss"] = _tone([[160.0, 0.12]], 0.6, &"noise")
 	_sounds[&"set"] = _tone([[523.0, 0.07], [659.0, 0.07], [784.0, 0.07], [1047.0, 0.16]], 0.45, &"square")
@@ -68,6 +73,10 @@ func _ready() -> void:
 ## Stop everything on the way out (a voice still playing at quit is reported
 ## as a leaked AudioStreamPlayback by the engine).
 func _exit_tree() -> void:
+	stop_all()
+
+
+func stop_all() -> void:
 	for p: AudioStreamPlayer in _players:
 		p.stop()
 		p.stream = null

@@ -252,8 +252,11 @@ func toggle_cup() -> void:
 # --- using a machine -------------------------------------------------------------
 
 func _on_use_started() -> void:
-	visual.z_index = 1
+	# seated at a desk: stay behind it (the desk hides the legs)
+	visual.z_index = 0 if station.data.sheet_pose == &"seated" else 1
 	_set_focus(null)
+	if station.data.sheet_pose == &"back":
+		facing = Vector2.UP
 	if queued != null:
 		leave_queue()
 	minigame = Minigame.create(station.data)
