@@ -13,7 +13,7 @@ signal user_removed(who: Node, reason: StringName)
 @export var interact_radius: float = 44.0
 ## Longest line a machine allows.
 @export var max_queue: int = 3
-@export var queue_spacing: float = 26.0
+@export var queue_spacing: float = 34.0
 
 ## instance_id -> Station, shared by every station so one actor can't hold two.
 static var _claims: Dictionary = {}
