@@ -47,6 +47,7 @@ func _on_spotted(by: Patroller) -> void:
 	for n: Node in get_tree().get_nodes_in_group(&"patrollers"):
 		var pt: Patroller = n as Patroller
 		pt.awareness = 0.0
+		pt.stop_chase()
 		pt.grace = respawn_grace
 		pt.safe_point = level.player_spawn
 		pt.safe_t = spawn_safe_time

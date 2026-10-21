@@ -1,12 +1,15 @@
 class_name Patroller
 extends ActorBody
-## The product manager looking for you. Walks a fixed route, stops at each
-## point and sweeps the view cone (predictable, learnable). Turns toward
-## loud noises. Builds awareness of the player while seeing them.
+## The product manager looking for you. Walks her route (the next stop is
+## sometimes picked at random, per difficulty), stops and sweeps the view
+## cone, turns toward loud noises. Builds awareness while seeing the player;
+## once suspicious enough she follows - slower than the player walks, keeping
+## her distance - searches where she lost them, then gives up.
+## Stationary watchers (desks, front desk) use a look schedule instead.
 
 signal spotted_player()
 
-enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
+enum Mode { WALK, LOOK, INVESTIGATE, RETURN, FOLLOW, SEARCH }
 
 @export var walk_speed: float = 55.0
 @export var wait_time: float = 2.4
@@ -29,6 +32,8 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 @export var difficulty: float = 1.0
 @export var view_range: float = 264.0
 @export var view_angle: float = 70.0
+## Difficulty multiplier on every view range (schedules included).
+var range_mult: float = 1.0
 ## Stationary watchers (desk colleagues, receptionist): cycle through
 ## (look angle deg, seconds, view range px) instead of walking a route.
 var look_schedule: Array[Vector3] = []
@@ -62,6 +67,29 @@ var _unseen_t: float = 0.0
 var _path: PackedVector2Array = PackedVector2Array()
 var _path_i: int = 0
 
+## Following (PM only; set from Difficulty).
+var can_chase: bool = false
+var chase_speed: float = 50.0
+## Seconds she keeps following after losing sight of the player.
+var chase_give_up: float = 4.0
+## Awareness at which she starts to follow.
+var follow_threshold: float = 0.35
+## She stops this far from the player while she can see them.
+var keep_distance: float = 80.0
+## Awareness rises slower while she walks after you than when she stands and
+## scans (following is suspicion, not certainty).
+var follow_rise_mult: float = 0.6
+var search_time: float = 2.2
+## Chance the next patrol stop is random instead of the next in order.
+var route_randomness: float = 0.0
+var rng := RandomNumberGenerator.new()
+var _sees_player: bool = false
+var _last_seen: Vector2 = Vector2.ZERO
+var _lost_t: float = 0.0
+var _repath_t: float = 0.0
+var _prev_point: int = -1
+var _wait_now: float = 2.4
+
 
 func _ready() -> void:
 	super._ready()
@@ -78,7 +106,9 @@ func _ready() -> void:
 	cone.z_index = -1
 	add_child(cone)
 	Events.noise_made.connect(_on_noise)
+	Events.run_started.connect(_seed_rng)
 	_timer = wait_time
+	_wait_now = wait_time
 	if hide_body:
 		visual.visible = false
 	if not look_schedule.is_empty():
@@ -112,21 +142,33 @@ func _physics_process(delta: float) -> void:
 		_update_cone(delta)
 		_update_awareness(delta)
 		return
+	if can_chase and _sees_player and awareness >= follow_threshold and mode != Mode.FOLLOW:
+		_start_follow()
 	match mode:
 		Mode.WALK, Mode.RETURN:
-			if _follow(delta):
+			if _follow(delta, walk_speed):
 				if mode == Mode.WALK and _point_i == 0:
 					_restart_schedule()
 				mode = Mode.LOOK
-				_timer = wait_time
+				# how long she lingers varies (more with higher route randomness)
+				_wait_now = wait_time * rng.randf_range(1.0 - 0.4 * route_randomness, 1.0 + 0.6 * route_randomness)
+				_timer = _wait_now
 				_base_angle = _look_angle
 		Mode.LOOK:
 			_timer -= delta
 			# sweep: left, right, back to center over the wait
-			var t: float = 1.0 - _timer / wait_time
+			var t: float = 1.0 - _timer / maxf(_wait_now, 0.01)
 			_look_angle = _base_angle + deg_to_rad(sweep_deg) * sin(t * TAU)
 			if _timer <= 0.0:
 				_next_point()
+		Mode.FOLLOW:
+			_do_follow(delta)
+		Mode.SEARCH:
+			_timer -= delta
+			var ts: float = 1.0 - _timer / search_time
+			_look_angle = _base_angle + deg_to_rad(70.0) * sin(ts * TAU)
+			if _timer <= 0.0:
+				_return_to_route()
 		Mode.INVESTIGATE:
 			_timer -= delta
 			if _timer <= 0.0:
@@ -138,13 +180,24 @@ func _physics_process(delta: float) -> void:
 
 
 func _next_point() -> void:
-	_point_i = (_point_i + 1) % points.size()
+	var n: int = points.size()
+	var nxt: int = (_point_i + 1) % n
+	if n > 2 and rng.randf() < route_randomness:
+		# somewhere else on the route, but not straight back
+		var options: Array[int] = []
+		for i: int in n:
+			if i != _point_i and i != _prev_point:
+				options.append(i)
+		if not options.is_empty():
+			nxt = options[rng.randi() % options.size()]
+	_prev_point = _point_i
+	_point_i = nxt
 	_path = level.find_path(global_position, points[_point_i])
 	_path_i = 0
 	mode = Mode.WALK
 
 
-func _follow(delta: float) -> bool:
+func _follow(delta: float, speed: float) -> bool:
 	if _path_i >= _path.size():
 		velocity = Vector2.ZERO
 		speed_kind = Speed.STILL
@@ -154,7 +207,7 @@ func _follow(delta: float) -> bool:
 	if to.length() < (3.0 if last else 7.0):
 		_path_i += 1
 		return _path_i >= _path.size()
-	steer(to, walk_speed * difficulty, last, delta)
+	steer(to, speed * difficulty, last, delta)
 	# look where we walk, smoothly
 	_look_angle = lerp_angle(_look_angle, velocity.angle(), minf(delta * 8.0, 1.0))
 	return false
@@ -165,7 +218,7 @@ func _update_cone(_delta: float) -> void:
 	facing = Vector2.RIGHT.rotated(_look_angle)
 	cone.heat = awareness
 	var r: float = _sched_range if _on_schedule() else view_range
-	cone.range_px = r * difficulty
+	cone.range_px = r * difficulty * range_mult
 	cone.angle_deg = view_angle * minf(difficulty, 1.15)
 
 
@@ -215,12 +268,13 @@ func _update_awareness(delta: float) -> void:
 	_noise_cd = maxf(_noise_cd - delta, 0.0)
 	var at_safe: bool = (safe_t > 0.0 and p.global_position.distance_to(safe_point) <= safe_radius) or level.is_in_safe_zone(p.global_position)
 	var seen: bool = grace <= 0.0 and not at_safe and cone.visible_fraction(sample_points(p)) > 0.0
+	_sees_player = seen
 	if seen:
 		_unseen_t = 0.0
 		var stealthy: bool = GameState.has_buff(&"stealthy")
 		# standing in a line you blend in with the crowd: counts as cover
 		var in_cover: bool = level.is_in_cover(p.global_position) or p.queued != null
-		awareness += rise_rate(global_position.distance_to(p.global_position), p.speed_kind, p.exposure(), in_cover, stealthy) * delta
+		awareness += rise_rate(global_position.distance_to(p.global_position), p.speed_kind, p.exposure(), in_cover, stealthy) * delta * (follow_rise_mult if mode == Mode.FOLLOW else 1.0)
 	else:
 		_unseen_t += delta
 		if _unseen_t >= fall_delay:
@@ -234,7 +288,7 @@ func _update_awareness(delta: float) -> void:
 func bubble() -> String:
 	if awareness >= 0.7:
 		return "!"
-	if awareness > 0.15 or mode == Mode.INVESTIGATE:
+	if awareness > 0.15 or mode == Mode.INVESTIGATE or is_following():
 		return "?"
 	return ""
 
@@ -278,3 +332,82 @@ func schedule_time_left() -> float:
 ## Typing at the desk while looking at the screen (short view range).
 func busy_motion() -> float:
 	return 0.6 if _on_schedule() and _sched_range < 110.0 else 0.0
+
+
+# --- following ---------------------------------------------------------------
+
+func _seed_rng() -> void:
+	rng.seed = hash(String(name)) ^ GameState.run_seed
+
+
+func _start_follow() -> void:
+	mode = Mode.FOLLOW
+	_lost_t = 0.0
+	_repath_t = 0.0
+	if target_player != null:
+		_last_seen = target_player.global_position
+	if String(name) == "ProductManager":
+		Events.toast.emit("产品经理起疑了，正往你这边走！", &"warn")
+
+
+## Walk toward where the player was last seen; hold back while she can see
+## them up close; lose interest after `chase_give_up` seconds without sight.
+func _do_follow(delta: float) -> void:
+	var p: Player = target_player
+	if p != null and _sees_player:
+		_last_seen = p.global_position
+		_lost_t = 0.0
+	else:
+		_lost_t += delta
+	var to_last: Vector2 = _last_seen - global_position
+	_look_angle = lerp_angle(_look_angle, (_last_seen - cone.global_position).angle(), minf(delta * 6.0, 1.0))
+	if _sees_player and to_last.length() <= keep_distance:
+		# close enough: stand and stare instead of bumping into you
+		velocity = velocity.move_toward(Vector2.ZERO, steer_accel * delta)
+		speed_kind = Speed.STILL
+	else:
+		_repath_t -= delta
+		if _repath_t <= 0.0:
+			_repath_t = 0.4
+			_path = level.find_path(global_position, _last_seen)
+			_path_i = 0
+		var arrived: bool = _follow(delta, chase_speed)
+		if arrived and not _sees_player:
+			_start_search()
+			return
+	if _lost_t >= chase_give_up:
+		_start_search()
+
+
+func _start_search() -> void:
+	mode = Mode.SEARCH
+	_timer = search_time
+	_base_angle = _look_angle
+	velocity = Vector2.ZERO
+	speed_kind = Speed.STILL
+
+
+## Back to the nearest point of the route.
+func _return_to_route() -> void:
+	var best: int = 0
+	var best_d: float = INF
+	for i: int in points.size():
+		var d: float = global_position.distance_to(points[i])
+		if d < best_d:
+			best_d = d
+			best = i
+	_point_i = best
+	_path = level.find_path(global_position, points[_point_i])
+	_path_i = 0
+	mode = Mode.RETURN
+
+
+## Called after a detection: forget the chase.
+func stop_chase() -> void:
+	_sees_player = false
+	if mode == Mode.FOLLOW or mode == Mode.SEARCH:
+		_return_to_route()
+
+
+func is_following() -> bool:
+	return mode == Mode.FOLLOW or mode == Mode.SEARCH

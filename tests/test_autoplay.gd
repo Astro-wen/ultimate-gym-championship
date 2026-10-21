@@ -36,7 +36,9 @@ func test_game_is_winnable_without_pm() -> void:
 
 
 func test_full_game_with_pm_ends_cleanly() -> void:
+	# a careless player (no cone reading) should be able to win on Easy
+	GameState.difficulty = Difficulty.Level.EASY
 	var r: Dictionary = await _run(true)
 	print("    autoplay (with PM): state=%s time=%.0fs training=%.0f%% detections=%d grade=%s" % [GameState.State.keys()[r["state"]], r["time"], r["training"] * 100.0, r["detections"], r["grade"]])
 	check(r["state"] != GameState.State.RUNNING, "run reached an ending")
-	check(float(r["training"]) > 0.3, "even a careless bot makes progress")
+	check(float(r["training"]) > 0.6, "on Easy even a careless bot gets most of the way (%.0f%%)" % (float(r["training"]) * 100.0))

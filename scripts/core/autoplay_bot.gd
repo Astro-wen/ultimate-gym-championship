@@ -127,6 +127,8 @@ func _play(g: Minigame, _delta: float) -> void:
 
 
 func _navigate(delta: float) -> void:
+	if _evade():
+		return
 	if _fetch_cup():
 		return
 	_repath_t -= delta
@@ -224,3 +226,25 @@ func _target_unusable() -> bool:
 	if _target.is_reserved_against(player):
 		return true
 	return not _target.is_turn_of(player) and _target.queue_size() >= _target.max_queue
+
+
+## A minimal human reaction: if a watcher is following and getting close,
+## leave any queue and walk away from her until she gives up.
+func _evade() -> bool:
+	for n: Node in get_tree().get_nodes_in_group(&"patrollers"):
+		var pm: Patroller = n as Patroller
+		if pm == null or not pm.is_following():
+			continue
+		var away: Vector2 = player.global_position - pm.global_position
+		if away.length() > 170.0:
+			continue
+		if player.queued != null:
+			player.leave_queue()
+		var goal: Vector2 = level.nearest_walkable(player.global_position + away.normalized() * 90.0)
+		var d: Vector2 = goal - player.global_position
+		_set_move(&"move_right", d.x > 4.0)
+		_set_move(&"move_left", d.x < -4.0)
+		_set_move(&"move_down", d.y > 4.0)
+		_set_move(&"move_up", d.y < -4.0)
+		return true
+	return false

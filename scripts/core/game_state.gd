@@ -10,6 +10,14 @@ enum State { READY, RUNNING, CAUGHT, WON, TIMEOUT }
 ## Level picked in the menu (&"gym" | &"office"; &"" = show the menu).
 ## Survives reset() and scene reloads on purpose.
 var selected_level: StringName = &""
+## Difficulty.Level picked in the menu; also survives reset().
+var difficulty: int = Difficulty.Level.NORMAL
+## Seed for this run's randomness (PM routes). Random each run unless
+## fixed_seed >= 0 (tests pin it for reproducible runs).
+var run_seed: int = 0
+var fixed_seed: int = -1
+## Detections allowed this run (set from the difficulty).
+var max_strikes: int = 3
 var state: State = State.READY
 ## While true the run can't end and the clock stops (elevator cutscene).
 var hold_win: bool = false
@@ -38,6 +46,7 @@ func reset() -> void:
 
 func start_run() -> void:
 	reset()
+	run_seed = fixed_seed if fixed_seed >= 0 else randi()
 	state = State.RUNNING
 	Events.run_started.emit()
 
