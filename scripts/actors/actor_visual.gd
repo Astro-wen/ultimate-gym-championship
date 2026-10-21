@@ -21,6 +21,14 @@ var _swap_on: bool = false
 ## Hop height (px) and squash (-0.3..0.3) for impact animations.
 var lift: float = 0.0
 var squash: float = 0.0
+## Procedural motion (see _animate): walk bob, run lean, step squash, breathing.
+var _bob: float = 0.0
+var _lean: float = 0.0
+var _step_squash: float = 0.0
+var _breath: float = 0.0
+var _idle_t: float = 0.0
+var _last_frame: int = -1
+var _last_row: int = -1
 
 const SWAP_SHADER_CODE: String = """
 shader_type canvas_item;
@@ -58,10 +66,7 @@ func _process(delta: float) -> void:
 		var m: ShaderMaterial = material
 		m.set_shader_parameter(&"enabled", want)
 		m.set_shader_parameter(&"shirt", actor.body_color)
-	if actor.speed_kind != ActorBody.Speed.STILL:
-		_walk_t += delta * (12.0 if actor.speed_kind == ActorBody.Speed.SPRINT else 6.0)
-	else:
-		_walk_t = 0.0
+	_animate(delta)
 
 
 func _draw() -> void:
@@ -70,7 +75,9 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	# shadow stays on the ground; the body can hop (lift) and squash
 	draw_ellipse_shadow()
-	draw_set_transform(Vector2(0, -lift), 0.0, Vector2(1.0 + squash, 1.0 - squash))
+	# body: hop (lift) + walk bob + lean, squash for impacts/steps/breathing
+	var sq: float = squash + _step_squash
+	draw_set_transform(Vector2(_lean, -lift + _bob), 0.0, Vector2(1.0 + sq - _breath, 1.0 - sq + _breath))
 	if actor.station != null and is_instance_valid(actor.station):
 		_draw_pose(actor.station.data)
 	elif walk_sheet != null:
@@ -251,3 +258,43 @@ func hop(height: float = 12.0, secs: float = 0.3) -> void:
 	tw.tween_property(self, ^"squash", 0.22, 0.05)
 	tw.tween_property(self, ^"squash", 0.0, 0.18).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
+
+
+## Walk cycle paced by distance actually moved (no foot sliding), plus small
+## procedural motion that makes the 3-frame sheets feel alive.
+func _animate(delta: float) -> void:
+	_idle_t += delta
+	var moving: bool = actor.speed_kind != ActorBody.Speed.STILL and actor.station == null
+	var running: bool = actor.speed_kind == ActorBody.Speed.SPRINT
+	if moving:
+		# scripted glides have no velocity: assume a normal walking pace
+		var spd: float = maxf(actor.velocity.length(), 55.0)
+		var stride: float = 13.0 if running else 9.0
+		_walk_t += spd * delta / stride
+		var phase: float = fmod(_walk_t, 2.0)   # one step per unit
+		_bob = -absf(sin(phase * PI)) * (2.2 if running else 1.2)
+		_lean = clampf(actor.facing.x, -1.0, 1.0) * (1.5 if running else 0.0)
+		var frame: int = int(_walk_t) % 4
+		if frame != _last_frame:
+			_last_frame = frame
+			if frame == 0 or frame == 2:
+				_step_squash = 0.05 if running else 0.025
+				actor.on_footstep(running)
+	else:
+		_walk_t = 0.0
+		_last_frame = -1
+		_bob = lerpf(_bob, 0.0, minf(delta * 12.0, 1.0))
+		_lean = lerpf(_lean, 0.0, minf(delta * 12.0, 1.0))
+		# slow breathing while idle; colleagues at a screen type instead
+		_breath = sin(_idle_t * 2.2) * 0.012
+		var busy: float = actor.busy_motion()
+		if busy > 0.0:
+			_bob = -roundf(absf(sin(_idle_t * 9.0))) * busy
+	if moving:
+		_breath = 0.0
+	_step_squash = lerpf(_step_squash, 0.0, minf(delta * 14.0, 1.0))
+	# a little pop when turning to a new direction
+	var row: int = _row_for_facing()
+	if row != _last_row and _last_row != -1 and actor.station == null:
+		_step_squash = maxf(_step_squash, 0.06)
+	_last_row = row

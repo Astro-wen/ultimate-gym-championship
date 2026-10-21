@@ -35,6 +35,8 @@ var blocker_colors: Array[Color] = []
 ## Solid but see-through (glass walls).
 var glass: Array[Rect2] = []
 ## Hiding spots that make the alert fall faster.
+## Places where being seen is normal (your own cubicle): no alert at all.
+var safe_zones: Array[Rect2] = []
 var covers: Array[Rect2] = []
 var player_spawn: Vector2 = Vector2(120, 480)
 ## GymGoer spawn points (gym only).
@@ -150,13 +152,49 @@ func nearest_walkable(p: Vector2) -> Vector2:
 
 
 ## Walkable path from `from` to `to` (world points). Empty if unreachable.
+## String-pulled: grid zig-zags are cut wherever the straight line is clear,
+## so actors walk natural straight lines.
 func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 	var a: Vector2i = _cell_of(nearest_walkable(from))
 	var b: Vector2i = _cell_of(nearest_walkable(to))
 	var path: PackedVector2Array = nav.get_point_path(a, b)
 	if path.size() > 0:
 		path[path.size() - 1] = nearest_walkable(to)
-	return path
+		if is_walkable(from):
+			path[0] = from
+	return simplify_path(path)
+
+
+func simplify_path(path: PackedVector2Array) -> PackedVector2Array:
+	if path.size() < 3:
+		return path
+	var out := PackedVector2Array([path[0]])
+	var i: int = 0
+	while i < path.size() - 1:
+		var j: int = path.size() - 1
+		while j > i + 1 and not is_clear_line(path[i], path[j]):
+			j -= 1
+		out.append(path[j])
+		i = j
+	return out
+
+
+## True if `p` is inside an actual solid (wall, furniture, station body) -
+## unlike is_walkable(), without the navigation clearance margin.
+func is_inside_solid(p: Vector2) -> bool:
+	for r: Rect2 in solid_rects():
+		if r.has_point(p):
+			return true
+	return false
+
+
+## True if every point along a-b is walkable (sampled every few pixels).
+func is_clear_line(a: Vector2, b: Vector2) -> bool:
+	var n: int = int(a.distance_to(b) / 5.0) + 1
+	for k: int in n + 1:
+		if not is_walkable(a.lerp(b, float(k) / float(n))):
+			return false
+	return true
 
 
 # --- building --------------------------------------------------------------
@@ -214,6 +252,14 @@ func _build_stations() -> void:
 		st.position = station_positions[i]
 		world.add_child(st)
 		stations.append(st)
+
+
+## True if `p` is somewhere being seen is perfectly normal (your own desk area).
+func is_in_safe_zone(p: Vector2) -> bool:
+	for r: Rect2 in safe_zones:
+		if r.has_point(p):
+			return true
+	return false
 
 
 ## True if `p` is inside a cover rect.

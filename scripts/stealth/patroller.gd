@@ -37,6 +37,9 @@ var hide_body: bool = false
 var _sched_i: int = 0
 var _sched_t: float = 0.0
 var _sched_range: float = 0.0
+## Full look-schedule cycles at the first point before walking the route.
+var schedule_loops: int = 1
+var _sched_cycles: int = 0
 ## Seconds during which awareness cannot rise (after a detection).
 var grace: float = 0.0
 ## Spot where the player can't be seen for `safe_t` more seconds (respawn point).
@@ -102,14 +105,18 @@ func _physics_process(delta: float) -> void:
 		speed_kind = Speed.STILL
 		_update_cone(delta)
 		return
-	if not look_schedule.is_empty() and mode != Mode.INVESTIGATE:
-		_run_schedule(delta)
+	if _on_schedule():
+		if _run_schedule(delta) and points.size() > 1:
+			# done at the seat: go for a walk (e.g. the receptionist's water run)
+			_next_point()
 		_update_cone(delta)
 		_update_awareness(delta)
 		return
 	match mode:
 		Mode.WALK, Mode.RETURN:
-			if _follow():
+			if _follow(delta):
+				if mode == Mode.WALK and _point_i == 0:
+					_restart_schedule()
 				mode = Mode.LOOK
 				_timer = wait_time
 				_base_angle = _look_angle
@@ -122,9 +129,7 @@ func _physics_process(delta: float) -> void:
 				_next_point()
 		Mode.INVESTIGATE:
 			_timer -= delta
-			if _timer <= 0.0 and not look_schedule.is_empty():
-				mode = Mode.LOOK
-			elif _timer <= 0.0:
+			if _timer <= 0.0:
 				_path = level.find_path(global_position, points[_point_i])
 				_path_i = 0
 				mode = Mode.RETURN
@@ -139,22 +144,19 @@ func _next_point() -> void:
 	mode = Mode.WALK
 
 
-func _follow() -> bool:
+func _follow(delta: float) -> bool:
 	if _path_i >= _path.size():
 		velocity = Vector2.ZERO
 		speed_kind = Speed.STILL
 		return true
 	var to: Vector2 = _path[_path_i] - global_position
-	if to.length() < 3.0:
+	var last: bool = _path_i == _path.size() - 1
+	if to.length() < (3.0 if last else 7.0):
 		_path_i += 1
 		return _path_i >= _path.size()
-	var dir: Vector2 = to.normalized()
-	velocity = dir * walk_speed * difficulty
-	facing = dir
-	speed_kind = Speed.WALK
+	steer(to, walk_speed * difficulty, last, delta)
 	# look where we walk, smoothly
-	_look_angle = lerp_angle(_look_angle, dir.angle(), 0.2)
-	move_and_slide()
+	_look_angle = lerp_angle(_look_angle, velocity.angle(), minf(delta * 8.0, 1.0))
 	return false
 
 
@@ -162,7 +164,7 @@ func _update_cone(_delta: float) -> void:
 	cone.rotation = _look_angle
 	facing = Vector2.RIGHT.rotated(_look_angle)
 	cone.heat = awareness
-	var r: float = _sched_range if not look_schedule.is_empty() else view_range
+	var r: float = _sched_range if _on_schedule() else view_range
 	cone.range_px = r * difficulty
 	cone.angle_deg = view_angle * minf(difficulty, 1.15)
 
@@ -211,7 +213,7 @@ func _update_awareness(delta: float) -> void:
 	grace = maxf(grace - delta, 0.0)
 	safe_t = maxf(safe_t - delta, 0.0)
 	_noise_cd = maxf(_noise_cd - delta, 0.0)
-	var at_safe: bool = safe_t > 0.0 and p.global_position.distance_to(safe_point) <= safe_radius
+	var at_safe: bool = (safe_t > 0.0 and p.global_position.distance_to(safe_point) <= safe_radius) or level.is_in_safe_zone(p.global_position)
 	var seen: bool = grace <= 0.0 and not at_safe and cone.visible_fraction(sample_points(p)) > 0.0
 	if seen:
 		_unseen_t = 0.0
@@ -237,19 +239,42 @@ func bubble() -> String:
 	return ""
 
 
-## Stationary watcher: turn smoothly to each scheduled direction, hold it.
-func _run_schedule(delta: float) -> void:
+## Watching from the first route point (a desk or the front desk).
+func _on_schedule() -> bool:
+	return not look_schedule.is_empty() and mode == Mode.LOOK and _point_i == 0
+
+
+func _restart_schedule() -> void:
+	_sched_i = 0
+	_sched_cycles = 0
+	_sched_t = look_schedule[0].y if not look_schedule.is_empty() else 0.0
+
+
+## Turn smoothly to each scheduled direction and hold it. Returns true once
+## `schedule_loops` full cycles are done (ignored with a one-point route).
+func _run_schedule(delta: float) -> bool:
 	velocity = Vector2.ZERO
 	speed_kind = Speed.STILL
 	_sched_t -= delta
 	if _sched_t <= 0.0:
 		_sched_i = (_sched_i + 1) % look_schedule.size()
 		_sched_t = look_schedule[_sched_i].y
+		if _sched_i == 0:
+			_sched_cycles += 1
 	var target: float = deg_to_rad(look_schedule[_sched_i].x)
 	_look_angle = lerp_angle(_look_angle, target, minf(delta * 6.0, 1.0))
 	_sched_range = lerpf(_sched_range, look_schedule[_sched_i].z, minf(delta * 6.0, 1.0))
+	if _sched_cycles >= schedule_loops:
+		_sched_cycles = 0
+		return true
+	return false
 
 
 ## Seconds until the current look direction changes (for tells/tests).
 func schedule_time_left() -> float:
 	return _sched_t
+
+
+## Typing at the desk while looking at the screen (short view range).
+func busy_motion() -> float:
+	return 0.6 if _on_schedule() and _sched_range < 110.0 else 0.0

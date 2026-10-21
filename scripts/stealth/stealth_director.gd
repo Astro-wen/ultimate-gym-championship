@@ -37,7 +37,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _on_spotted(by: Patroller) -> void:
-	if not GameState.is_running():
+	if not GameState.is_running() or GameState.hold_win:
 		return
 	GameState.detections += 1
 	Events.player_detected.emit(by)

@@ -54,7 +54,11 @@ func test_tasks_unlock_in_order() -> void:
 	check(p.try_use(lift), "elevator")
 	lift.finish_use(p)
 	GameState.tick(0.1)
+	check(GameState.is_running() and GameState.hold_win, "the elevator ride plays before the results")
+	for i: int in 60 * 3:
+		await tree.physics_frame
 	check_eq(GameState.state, GameState.State.WON, "four tasks = going home early")
+	check(not p.visible, "player rode away in the elevator")
 
 
 func test_receptionist_looks_away_sometimes() -> void:
@@ -125,3 +129,45 @@ func test_finished_tasks_cant_be_repeated() -> void:
 	check(desk.is_locked_for(p), "desk task locked once done")
 	check(not p.try_use(desk), "can't farm the same task")
 	check_eq(GameState.training_points, 1, "counted once")
+
+
+func test_locked_tasks_dont_queue() -> void:
+	var m: Node = _office()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var printer: Station = (m.get(&"level") as Level).station_by_id(&"printer")
+	check_eq(p.interact_label(printer), "", "no action label on a locked task")
+	check(not p.interact(printer), "E does nothing on a locked task")
+	check(p.queued == null, "not stuck in a queue")
+	check(p.locked_reason(printer).begins_with("先完成"), "HUD explains what to do first")
+
+
+func test_working_at_your_desk_is_not_suspicious() -> void:
+	var m: Node = _office()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var desk: Station = (m.get(&"level") as Level).station_by_id(&"desk_work")
+	check(p.try_use(desk), "sitting at the desk")
+	for i: int in 60 * 12:
+		await tree.physics_frame
+		p.minigame.tick(0.0)   # keep the minigame open, just sit
+	check_eq(GameState.detections, 0, "nobody calls you out for working at your own desk")
+	p.end_use()
+	p.snap_to((m.get(&"level") as Level).player_spawn)
+	for i: int in 60 * 12:
+		await tree.physics_frame
+	check_eq(GameState.detections, 0, "standing in your own cubicle is fine too")
+
+
+func test_printer_blocks_sight() -> void:
+	var m: Node = _office()
+	await step_frames(3)
+	var printer: Station = (m.get(&"level") as Level).station_by_id(&"printer")
+	var cone := VisionCone.new()
+	cone.range_px = 400.0
+	cone.position = printer.global_position + Vector2(-150, -18)
+	add(cone)
+	await step_frames(2)
+	check(not cone.can_see_point(printer.global_position + Vector2(150, -18)), "can't see through the printer")

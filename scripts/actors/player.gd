@@ -56,7 +56,12 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if not input_enabled or not GameState.is_running():
+	if not input_enabled:
+		# scripted (cutscene): whoever disabled input drives speed_kind/facing
+		velocity = Vector2.ZERO
+		_set_focus(null)
+		return
+	if not GameState.is_running():
 		velocity = Vector2.ZERO
 		speed_kind = Speed.STILL
 		_set_focus(null)
@@ -71,6 +76,9 @@ func _physics_process(delta: float) -> void:
 	_remount_t = maxf(_remount_t - delta, 0.0)
 	if Input.is_action_just_pressed(&"cup"):
 		toggle_cup()
+	if Input.is_action_just_pressed(&"leave") and queued != null:
+		leave_queue()
+		Events.toast.emit("离开了队伍", &"info")
 	if Input.is_action_just_pressed(&"interact"):
 		_buffer_t = interact_buffer
 	if _buffer_t > 0.0 and focus_station != null and interact(focus_station):
@@ -105,8 +113,14 @@ func _set_focus(st: Station) -> void:
 
 
 func _find_focus_station() -> Station:
-	if queued != null:
+	var best: Station = _nearest_station_in_reach()
+	# stay on the machine we're queued for, unless one in reach is free for us
+	if queued != null and (best == null or best == queued or not best.is_turn_of(self)):
 		return queued
+	return best
+
+
+func _nearest_station_in_reach() -> Station:
 	var best: Station = null
 	var best_d: float = INF
 	for n: Node in get_tree().get_nodes_in_group(&"stations"):
@@ -154,7 +168,7 @@ func leave_queue() -> void:
 
 ## What E does at `st`, as a short label for the HUD (empty = nothing).
 func interact_label(st: Station) -> String:
-	if st == null:
+	if st == null or st.is_locked_for(self):
 		return ""
 	var name_s: String = st.data.display_name
 	if st.is_turn_of(self):
@@ -173,6 +187,8 @@ func interact_label(st: Station) -> String:
 ## E at a machine: use it if it's our turn, shove if first in line and allowed,
 ## otherwise join the line.
 func interact(st: Station) -> bool:
+	if st.is_locked_for(self):
+		return false
 	if st.is_turn_of(self):
 		return try_use(st)
 	if queued == st:
@@ -265,6 +281,9 @@ func _on_use_started() -> void:
 	_down.clear()
 	for a: StringName in MINIGAME_ACTIONS:
 		_down[a] = Input.is_action_pressed(a)
+	# "hold E" tasks: keeping E held from the mounting press starts the hold
+	if bool(station.data.minigame_params.get("start_held", false)):
+		_down[&"interact"] = false
 	minigame_changed.emit(minigame)
 
 
@@ -314,3 +333,25 @@ func exposure() -> float:
 	if station != null:
 		return station.data.exposure
 	return 1.0
+
+
+func on_footstep(running: bool) -> void:
+	Events.footstep.emit(global_position, running)
+	if running:
+		DustPuff.spawn(get_parent(), global_position + Vector2(0, -1), -velocity * 0.15)
+
+
+## Why E does nothing at a gated task (HUD hint), or "" if it isn't gated.
+func locked_reason(st: Station) -> String:
+	if st == null or not st.is_locked_for(self):
+		return ""
+	if st.data.once and GameState.sets_done.has(st.data.id):
+		return "%s已完成" % st.data.display_name
+	for req: StringName in st.data.requires:
+		if not GameState.sets_done.has(req):
+			var other: Station = null
+			for n: Node in get_tree().get_nodes_in_group(&"stations"):
+				if (n as Station).data.id == req:
+					other = n
+			return "先完成：%s" % (other.data.display_name if other != null else String(req))
+	return ""

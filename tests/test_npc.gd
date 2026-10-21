@@ -37,7 +37,7 @@ func test_gym_goers_soak_5_minutes() -> void:
 				worst = maxf(worst, same_mode_t[i])
 			if not check(g.station == null or g.station.is_user(g), "frame %d: goer %d thinks it holds a station it doesn't" % [frame, i]):
 				break
-			if not check(level.is_walkable(g.global_position) or g.station != null, "frame %d: goer %d inside a wall at %s" % [frame, i, g.global_position]):
+			if not check(not level.is_inside_solid(g.global_position) or g.station != null, "frame %d: goer %d inside a wall at %s" % [frame, i, g.global_position]):
 				break
 		if not failures.is_empty():
 			break

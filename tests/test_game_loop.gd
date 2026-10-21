@@ -234,3 +234,21 @@ func test_every_standing_spot_is_in_reach() -> void:
 	for st: Station in lvl.stations:
 		p.snap_to(st.interact_point())
 		check(p._find_focus_station() == st, "E reaches %s from its standing spot" % st.name)
+
+
+func test_queued_player_can_take_free_machine_nearby() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var lvl: Level = m.get(&"level")
+	var tread_a: Station = lvl.stations[2]
+	var tread_b: Station = lvl.stations[3]
+	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
+	g.begin_use(tread_a)
+	p.snap_to(tread_a.exit_point())
+	check(p.interact(tread_a), "queued for treadmill A")
+	p.snap_to(tread_b.exit_point())
+	check(p._find_focus_station() == tread_b, "free treadmill B next to us takes focus")
+	check(p.interact(tread_b), "E uses treadmill B")
+	check(p.station == tread_b and p.queued == null, "on B, out of A's line")

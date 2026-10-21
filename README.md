@@ -23,7 +23,8 @@ Godot 4.7 · GDScript · 像素风 960×540
 | 前台签退 | 按住 E 签名，绿区松开；要趁前台低头看电脑时签 |
 | 坐电梯 | 按住 E 按电梯，松手进电梯 |
 
-- 同事大多盯着屏幕（视野很短），会时不时转头看过道；前台轮流看电脑、抬头、看电梯口。
+- 同事大多盯着屏幕（视野很短），会时不时转头看过道；前台轮流看电脑、抬头、看电梯口，看两轮后会离座去饮水机喝水。
+- 在自己工位干活、站在自己工位区都很正常，不会被抓。排队时按 Q 离队。
 - 书架、打印机、饮水机挡视线；会议室是玻璃的，挡路不挡视线。办公室里站着不动也很显眼。
 - 被发现：送回工位、扣 15 秒，3 次出局。做完的任务不能重复做。
 
@@ -58,7 +59,7 @@ Godot 4.7 · GDScript · 像素风 960×540
 ## 开发
 
 ```powershell
-powershell -File tools/test.ps1                 # 全部测试（55 个），有任何脚本错误也算失败
+powershell -File tools/test.ps1                 # 全部测试（59 个），有任何脚本错误也算失败
 powershell -File tools/shot.ps1 out.png --autostart --autoplay --shot-frames=600   # 截图
 powershell -File tools/godot.ps1 --import       # 刷新导入/类缓存
 ```

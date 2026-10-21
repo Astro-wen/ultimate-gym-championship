@@ -13,6 +13,7 @@ extends Node
 ##   --cup=<i>              drop the water cup at station i
 ##   --shove=<i>            GymGoer0 on station i, player shoves it off
 ##   --level=office|gym|menu  which level to load (default: the menu)
+##   --ride                 (office) play the elevator ride right away
 
 var main: Node
 var shot_path: String = ""
@@ -21,7 +22,15 @@ var run_frames: int = -1
 var _frame: int = 0
 
 
+## Command-line options apply to the first scene only (not after R/M reloads).
+static var _applied: bool = false
+static var _level_applied: bool = false
+
+
 static func apply_cmdline(m: Node) -> void:
+	if _applied:
+		return
+	_applied = true
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.is_empty():
 		return
@@ -54,6 +63,8 @@ static func apply_cmdline(m: Node) -> void:
 		d._cup_at.call_deferred(int(opts["cup"]))
 	if opts.has("shove"):
 		d._shove.call_deferred(int(opts["shove"]))
+	if opts.has("ride"):
+		d._ride.call_deferred()
 	if opts.has("pause"):
 		d._pause.call_deferred()
 	if opts.has("end"):
@@ -85,6 +96,17 @@ func _shove(idx: int) -> void:
 	var p: Player = main.get(&"player")
 	p.interact(st)
 	p.interact(st)
+
+
+func _ride() -> void:
+	var lvl: Level = main.get(&"level")
+	var p: Player = main.get(&"player")
+	for id: StringName in [&"desk_work", &"printer", &"signout"]:
+		GameState.sets_done[id] = 1
+	var lift: Station = lvl.station_by_id(&"elevator")
+	p.snap_to(lift.exit_point())
+	if lvl.has_method(&"ride_elevator"):
+		lvl.call(&"ride_elevator", p)
 
 
 func _pause() -> void:
@@ -120,13 +142,16 @@ func _process(_delta: float) -> void:
 		main.call(&"quit_game")
 		set_process(false)
 	elif run_frames > 0 and _frame >= run_frames:
-		print("[soak] %d frames ok" % _frame)
+		print("[soak] %d frames ok, fps=%d" % [_frame, Engine.get_frames_per_second()])
 		main.call(&"quit_game")
 		set_process(false)
 
 
 ## `--level=office|gym|menu` picks the level before the scene is built.
 static func level_from_cmdline() -> void:
+	if _level_applied:
+		return
+	_level_applied = true
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--level="):
 			var v: String = a.trim_prefix("--level=")

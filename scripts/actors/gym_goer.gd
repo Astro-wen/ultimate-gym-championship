@@ -127,14 +127,11 @@ func _follow(delta: float) -> bool:
 		return true
 	var next: Vector2 = _path[_path_i]
 	var to: Vector2 = next - global_position
-	if to.length() < 3.0:
+	var last: bool = _path_i == _path.size() - 1
+	if to.length() < (3.0 if last else 7.0):
 		_path_i += 1
 		return _path_i >= _path.size()
-	var dir: Vector2 = to.normalized()
-	velocity = dir * walk_speed
-	facing = dir
-	speed_kind = Speed.WALK
-	move_and_slide()
+	steer(to, walk_speed, last, delta)
 	# stuck detection
 	if global_position.distance_to(_last_pos) < 0.5 * walk_speed * delta:
 		_stuck_t += delta
@@ -242,4 +239,12 @@ func _leave_station_motion(st: Station, reason: StringName) -> void:
 	glide_to(to, 0.32)
 	visual.hop(14.0, 0.34)
 	visual.flash()
+	# landing dust once the hop comes down
+	get_tree().create_timer(0.32, false).timeout.connect(_landing_dust)
 	facing = -away
+
+
+func _landing_dust() -> void:
+	if is_inside_tree():
+		DustPuff.spawn(get_parent(), global_position, Vector2(-14, 0), 5.0)
+		DustPuff.spawn(get_parent(), global_position, Vector2(14, 0), 5.0)

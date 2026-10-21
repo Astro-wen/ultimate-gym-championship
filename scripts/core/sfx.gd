@@ -35,6 +35,9 @@ func _ready() -> void:
 	_sounds[&"alarm"] = _tone([[988.0, 0.12], [740.0, 0.12], [988.0, 0.12], [740.0, 0.2]], 0.5, &"saw")
 	_sounds[&"shove"] = _mix(_tone([[140.0, 0.05], [70.0, 0.14]], 0.9, &"square"), _tone([[300.0, 0.12]], 0.8, &"noise"))
 	_sounds[&"clink"] = _tone([[1568.0, 0.04], [2093.0, 0.09]], 0.35, &"triangle")
+	_sounds[&"ding"] = _tone([[1319.0, 0.18], [1047.0, 0.35]], 0.4, &"sine")
+	_sounds[&"step"] = _tone([[220.0, 0.025]], 0.18, &"noise")
+	_sounds[&"step_run"] = _tone([[260.0, 0.03]], 0.32, &"noise")
 	_sounds[&"queue"] = _tone([[660.0, 0.05], [880.0, 0.06]], 0.3, &"square")
 	_sounds[&"beat"] = _tone([[70.0, 0.06], [0.0, 0.05], [60.0, 0.08]], 0.7, &"sine")
 	_sounds[&"start"] = _tone([[392.0, 0.08], [523.0, 0.08], [659.0, 0.14]], 0.45, &"square")
@@ -57,6 +60,8 @@ func _ready() -> void:
 			play(&"set"))
 	Events.player_detected.connect(func(_by: Node) -> void: play(&"alarm"))
 	Events.shoved.connect(func(_p: Node, _v: Node, _at: Vector2) -> void: play(&"shove"))
+	Events.elevator_ding.connect(func() -> void: play(&"ding"))
+	Events.footstep.connect(func(_at: Vector2, running: bool) -> void: play(&"step_run" if running else &"step"))
 	Events.cup_moved.connect(func(_c: bool) -> void: play(&"clink"))
 	Events.toast.connect(func(_t: String, kind: StringName) -> void:
 		if kind == &"info":
