@@ -222,3 +222,14 @@ func test_shove_knocks_regular_back() -> void:
 	check(g.global_position.distance_to(st.exit_point()) > 10.0, "regular knocked back past the exit point")
 	await step_frames(30)
 	check(is_equal_approx(Engine.time_scale, 1.0), "hit-stop released")
+
+
+func test_every_standing_spot_is_in_reach() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var lvl: GymLevel = m.get(&"level")
+	for st: Station in lvl.stations:
+		p.snap_to(st.interact_point())
+		check(p._find_focus_station() == st, "E reaches %s from its standing spot" % st.name)

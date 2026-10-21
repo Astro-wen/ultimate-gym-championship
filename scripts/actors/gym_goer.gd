@@ -95,9 +95,16 @@ func _choose() -> void:
 		pick = free[rng.randi() % free.size()]
 	elif not busy.is_empty():
 		# shortest line wins, ties broken randomly
-		busy.shuffle()
-		busy.sort_custom(func(a: Station, b: Station) -> bool: return a.queue_size() < b.queue_size())
-		pick = busy[0]
+		var best_q: int = 1 << 30
+		var ties: Array[Station] = []
+		for st: Station in busy:
+			var q: int = st.queue_size()
+			if q < best_q:
+				best_q = q
+				ties.clear()
+			if q == best_q:
+				ties.append(st)
+		pick = ties[rng.randi() % ties.size()]
 	if pick == null:
 		_set_mode(Mode.REST)
 		return

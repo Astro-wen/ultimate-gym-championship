@@ -113,7 +113,9 @@ func _find_focus_station() -> Station:
 		var st: Station = n as Station
 		if st == null or (st == last_station and _remount_t > 0.0):
 			continue
-		var d: float = st.distance_to_point(global_position)
+		# footprint distance, or distance to where you stand to use it (whichever
+		# is closer): the standing spot must always be in reach
+		var d: float = minf(st.distance_to_point(global_position), global_position.distance_to(st.interact_point()))
 		# prefer the one we're facing when two are in reach
 		if facing.dot(st.global_position - global_position) > 0.0:
 			d -= 6.0
