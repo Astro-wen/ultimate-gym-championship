@@ -128,10 +128,13 @@ func _spawn_npcs() -> void:
 		var skin: Array = s.get("skin", [])
 		if skin.size() == 2:
 			LocalArt.apply_skin(w.visual, int(skin[0]), int(skin[1]))
+	_apply_difficulty()
 	director = StealthDirector.new()
 	director.name = "StealthDirector"
 	director.player = player
 	director.level = level
+	director.max_detections = int(Difficulty.params(GameState.difficulty)["strikes"])
+	GameState.max_strikes = director.max_detections
 	director.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(director)
 
@@ -183,3 +186,20 @@ func quit_game() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	get_tree().quit()
+
+
+## Tune every watcher for the chosen difficulty; the PM can also follow.
+func _apply_difficulty() -> void:
+	var dp: Dictionary = Difficulty.params(GameState.difficulty)
+	for n: Node in get_tree().get_nodes_in_group(&"patrollers"):
+		var w: Patroller = n as Patroller
+		w.base_rise *= float(dp["rise"])
+		w.range_mult = float(dp["view"])
+		if w.look_schedule.is_empty():
+			# the walking PM
+			w.walk_speed *= float(dp["pm_speed"])
+			w.can_chase = true
+			w.chase_speed = float(dp["chase_speed"])
+			w.chase_give_up = float(dp["chase_time"])
+			w.follow_threshold = float(dp["follow_at"])
+			w.route_randomness = float(dp["randomness"])

@@ -33,6 +33,7 @@ var alert: float = 0.0
 var paused: bool = false
 var _menu_sel: int = 0
 var _menu_rects: Array[Rect2] = []
+var _diff_rects: Array[Rect2] = []
 var _canvas: Control
 var _font: Font
 var _t: float = 0.0
@@ -85,7 +86,7 @@ func _on_set_done(st: Node, who: Node) -> void:
 
 func _on_detected(by: Node) -> void:
 	_caught_flash = 1.0
-	var left: int = 3 - GameState.detections
+	var left: int = GameState.max_strikes - GameState.detections
 	var who: String = "同事"
 	if by != null:
 		who = WATCHER_NAMES.get(String(by.name), "同事")
@@ -97,10 +98,14 @@ func _on_detected(by: Node) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not menu_mode:
 		return
-	if event.is_action_pressed(&"move_left") or event.is_action_pressed(&"move_up"):
+	if event.is_action_pressed(&"move_left"):
 		_menu_sel = (_menu_sel + MENU_ITEMS.size() - 1) % MENU_ITEMS.size()
-	elif event.is_action_pressed(&"move_right") or event.is_action_pressed(&"move_down"):
+	elif event.is_action_pressed(&"move_right"):
 		_menu_sel = (_menu_sel + 1) % MENU_ITEMS.size()
+	elif event.is_action_pressed(&"move_up"):
+		GameState.difficulty = maxi(GameState.difficulty - 1, 0)
+	elif event.is_action_pressed(&"move_down"):
+		GameState.difficulty = mini(GameState.difficulty + 1, Difficulty.NAMES.size() - 1)
 	elif event.is_action_pressed(&"interact"):
 		level_chosen.emit(MENU_ITEMS[_menu_sel]["id"])
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -123,6 +128,11 @@ func _input(event: InputEvent) -> void:
 		return
 	# canvas_items stretch: map the window position into the 960x540 canvas
 	var p: Vector2 = _canvas.get_global_transform_with_canvas().affine_inverse() * (mm.position if mm != null else mb.position)
+	for i: int in _diff_rects.size():
+		if mb != null and _diff_rects[i].has_point(p):
+			GameState.difficulty = i
+			get_viewport().set_input_as_handled()
+			return
 	for i: int in _menu_rects.size():
 		if _menu_rects[i].has_point(p):
 			_menu_sel = i
@@ -155,9 +165,9 @@ func _draw_menu(vp: Vector2) -> void:
 		_text(Vector2(r.position.x, r.position.y + 128), it["title"], 24, TEXT, HORIZONTAL_ALIGNMENT_CENTER, w)
 		_text(Vector2(r.position.x, r.position.y + 156), it["sub"], 13, DIM, HORIZONTAL_ALIGNMENT_CENTER, w)
 		_keycap(Vector2(r.position.x + 12, r.position.y + 12), it["key"])
-	var y: float = 420.0
-	var hint: String = "鼠标点击，或 ← → 选择、E 确认（也可以直接按 1 / 2）"
-	_text(Vector2(0, y), hint, 14, DIM, HORIZONTAL_ALIGNMENT_CENTER, vp.x)
+	_draw_difficulty_row(vp, 404.0)
+	var hint: String = "鼠标点击，或 ← → 选关卡、↑ ↓ 选难度、E 开始（也可以直接按 1 / 2）"
+	_text(Vector2(0, 498), hint, 14, DIM, HORIZONTAL_ALIGNMENT_CENTER, vp.x)
 	_text(Vector2(0, vp.y - 10), "美术素材：LimeZu《Modern Interiors》 · 角色动作由 AI 基于原素材绘制", 11, DIM, HORIZONTAL_ALIGNMENT_CENTER, vp.x)
 
 
@@ -355,7 +365,7 @@ func _draw_top_bar_right(vp: Vector2) -> void:
 	# strikes (times caught)
 	var x: float = vp.x - 250.0
 	_text(Vector2(x, 30), "被抓", 14, DIM)
-	for i: int in 3:
+	for i: int in GameState.max_strikes:
 		var c := Vector2(x + 44 + i * 18, 24)
 		var used: bool = i < GameState.detections
 		_canvas.draw_circle(c, 7.0, BAD if used else Color(1, 1, 1, 0.08))
@@ -518,6 +528,9 @@ func _draw_intro(vp: Vector2) -> void:
 	var office: bool = level != null and level.level_id == &"office"
 	_text(Vector2(x, 108), (level.title if level != null else "") + "  ·  ULTIMATE GYM CHAMPIONSHIP", 26, Color(1, 0.85, 0.3), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	_text(Vector2(x, 138), level.tagline if level != null else "", 16, TEXT, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var dc: Color = Difficulty.COLORS[GameState.difficulty]
+	_panel(Rect2(r.end.x - 96, r.position.y + 12, 84, 24), Color(dc, 0.2), Color(dc, 0.8), 12)
+	_text(Vector2(r.end.x - 96, r.position.y + 30), "难度：" + Difficulty.name_of(GameState.difficulty), 13, TEXT, HORIZONTAL_ALIGNMENT_CENTER, 84)
 	var controls: Array = [
 		["WASD", "移动（默认慢走，比较安静）"],
 		["Shift", "跑（快，但更容易被发现）"],
@@ -567,6 +580,7 @@ func _draw_results(vp: Vector2) -> void:
 	_panel(r, PANEL, Color(col, 0.7), 16)
 	var x: float = r.position.x
 	_text(Vector2(x, 134), title, 24, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	_text(Vector2(r.end.x - 110, r.position.y + 28), "难度：" + Difficulty.name_of(GameState.difficulty), 12, Difficulty.COLORS[GameState.difficulty], HORIZONTAL_ALIGNMENT_CENTER, 100)
 	var grade: String = GameState.grade()
 	var gc: Color = {"S": Color(1, 0.85, 0.3), "A": GOOD, "B": INFO}.get(grade, DIM)
 	_canvas.draw_circle(Vector2(vp.x * 0.5, 196), 40.0, Color(gc, 0.15))
@@ -598,3 +612,21 @@ func _draw_results(vp: Vector2) -> void:
 	bx += 90
 	bx += _keycap(Vector2(bx, r.end.y - 50), "M") + 8
 	_text(Vector2(bx, r.end.y - 34), "回菜单", 17, DIM)
+
+
+func _draw_difficulty_row(vp: Vector2, y: float) -> void:
+	_diff_rects.clear()
+	_panel(Rect2(vp.x * 0.5 - 230, y - 10, 460, 82), PANEL, PANEL_EDGE, 14)
+	var w: float = 96.0
+	var gap: float = 10.0
+	var n: int = Difficulty.NAMES.size()
+	var x: float = vp.x * 0.5 - (w * n + gap * (n - 1)) * 0.5 + 40.0
+	_text(Vector2(x - 80, y + 20), "难度", 15, DIM)
+	for i: int in n:
+		var sel: bool = i == GameState.difficulty
+		var col: Color = Difficulty.COLORS[i]
+		var r := Rect2(x + i * (w + gap), y, w, 28)
+		_diff_rects.append(r)
+		_panel(r, Color(col, 0.25) if sel else Color(1, 1, 1, 0.05), Color(col, 0.9) if sel else PANEL_EDGE, 14)
+		_text(Vector2(r.position.x, y + 20), Difficulty.name_of(i), 15, TEXT if sel else DIM, HORIZONTAL_ALIGNMENT_CENTER, w)
+	_text(Vector2(0, y + 58), Difficulty.BLURBS[GameState.difficulty], 13, Difficulty.COLORS[GameState.difficulty], HORIZONTAL_ALIGNMENT_CENTER, vp.x)

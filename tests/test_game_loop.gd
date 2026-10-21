@@ -16,6 +16,7 @@ func test_spotted_sends_player_back() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var pm: Patroller = m.get_node("Level/World/ProductManager") as Patroller
+	pm.can_chase = false   # this test is about the capture flow, not following
 	var p: Player = m.get(&"player")
 	# stand right in front of the PM while it looks around at point 0
 	p.global_position = pm.global_position + Vector2(0, 60)

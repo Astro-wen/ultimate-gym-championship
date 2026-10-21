@@ -62,6 +62,9 @@ func _reset_globals() -> void:
 	var gs: Node = get_tree().root.get_node_or_null(^"GameState")
 	if gs != null:
 		gs.call(&"reset")
+		# reproducible runs, standard difficulty
+		gs.set(&"fixed_seed", 4242)
+		gs.set(&"difficulty", 1)
 	Station.clear_all_claims()
 
 

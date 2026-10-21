@@ -65,6 +65,9 @@ func visible_fraction(points: PackedVector2Array) -> float:
 func _draw() -> void:
 	if polygon.size() < 3:
 		return
+	# rays all blocked right at the eye (pressed against a wall): nothing to fill
+	if Geometry2D.triangulate_polygon(polygon).is_empty():
+		return
 	var col: Color = fill_color.lerp(alert_color, clampf(heat, 0.0, 1.0))
 	draw_colored_polygon(polygon, col)
 	draw_polyline(polygon + PackedVector2Array([Vector2.ZERO]), Color(col, col.a * 2.0), 1.0)
