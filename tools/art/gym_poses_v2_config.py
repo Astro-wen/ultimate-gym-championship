@@ -32,6 +32,32 @@ CHARS = {
                 "antennae, small green eyes, peach skin, a white T-shirt under a sky-blue sleeveless sporty top / "
                 "dungarees, white legs (white shorts / socks), grey-blue shoes",
     },
+    # crowd / cup regulars (round 2)
+    "goer_blonde": {
+        "set": 1, "index": 3,
+        "desc": "a young woman with long, thick honey-blonde / golden caramel-orange hair: a side-swept fringe covering "
+                "the forehead down to the eyebrows, the hair falls straight down to the shoulders on both sides of the "
+                "face and covers the whole back of the head down to the shoulders; small blue eyes, pink blush on the "
+                "cheeks, peach skin, a short-sleeved light beige / sand-coloured top, dark slate grey-blue trousers, "
+                "orange-brown shoes",
+        # her bench press kept coming out with ~37 rows of tiny blocks (eyes lost when resampled to 23 rows)
+        "notes": {"bench_press": "Keep the blocks BIG: from the top of the hair to the shoes the character is only "
+                                 "about 23 blocks tall (each block about 1/30 of the image height), the barbell bar "
+                                 "is exactly one block thick, and each eye is one whole blue block."},
+    },
+    "goer_sky": {
+        "set": 1, "index": 7,
+        "desc": "a young man with short, rounded light-brown hair (lighter caramel on top, darker brown at the sides, "
+                "a straight fringe over the forehead), small blue eyes, peach skin, a long-sleeved sky-blue sweater "
+                "with dark navy-blue horizontal stripes, mustard-yellow / olive trousers, dark brown shoes",
+    },
+    "goer_brown": {
+        "set": 3, "index": 2,
+        "desc": "a man with dark brown skin and very short, close-cropped dark charcoal-grey hair (a rounded crew cut), "
+                "small dark eyes, a dark red / maroon short-sleeved open shirt or jacket with a white undershirt "
+                "showing as a narrow white stripe down the middle of the chest, dark slate grey trousers, dark red "
+                "shoes",
+    },
 }
 
 # reference-sheet row used for each view
@@ -115,7 +141,7 @@ Style rules (very important):
 - Very low resolution pixel art: the character is only about 16 pixels wide and 22 pixels tall, exactly like the reference sprite. Show it enlarged with nearest-neighbour scaling so every art pixel is a big, crisp, uniform square block (all blocks the same size, aligned on one grid). No anti-aliasing, no gradients, no fine detail smaller than one block.
 - Same proportions as the reference: a huge round head that is about half of the total body height and as wide as the whole body, tiny stubby body, very short arms and legs.
 - Thick dark navy-grey outline (one block wide) around the silhouette, flat colours with only 2-3 shades per material, use the same colours as the reference. Gym equipment is dark grey / black with a light grey highlight.
-- Same person, same hair, same clothes, same colours as the reference.
+- Same person, same hair, same clothes, same colours as the reference.{note}
 
 Image rules: exactly ONE character in ONE pose, full body visible, centered, nothing cut off. Background: a single flat solid pure magenta colour (#FF00FF), no floor, no shadow, no text, no border, no other objects. Do NOT draw multiple poses, a sprite sheet, or a copy of the reference.
 """
@@ -131,7 +157,8 @@ def prompt_for(char_id, action, frame, ref_frame=None):
         ref_frame = 0
     c, a = CHARS[char_id], ACTIONS[action]
     return PROMPT.format(extra_ref=EXTRA_REF.format(ref=ref_frame) if ref_frame is not None else "", desc=c["desc"], pose=a["pose"],
-                         frame=a["frame"][frame], view_row=VIEW_ROW[a["view"]])
+                         frame=a["frame"][frame], view_row=VIEW_ROW[a["view"]],
+                         note=("\n- " + c["notes"][action]) if action in c.get("notes", {}) else "")
 
 
 if __name__ == "__main__":
