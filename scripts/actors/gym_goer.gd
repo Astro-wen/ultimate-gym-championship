@@ -7,10 +7,12 @@ extends ActorBody
 enum Mode { CHOOSE, WALK, QUEUE, USE, REST, ANGRY }
 
 @export var walk_speed: float = 60.0
-@export var patience: float = 6.0
-@export var rest_time: Vector2 = Vector2(1.5, 4.0)
+@export var patience: float = 12.0
+@export var rest_time: Vector2 = Vector2(3.0, 7.0)
 @export var angry_time: float = 2.0
 @export var stuck_timeout: float = 3.0
+## How far a shove sends them past the exit point (px).
+@export var knockback: float = 34.0
 
 var mode: Mode = Mode.CHOOSE
 var level: GymLevel
@@ -23,6 +25,7 @@ var _last_station: Station = null
 var _stuck_t: float = 0.0
 var _last_pos: Vector2 = Vector2.ZERO
 var _use_t: float = 0.0
+var _queue_pos: int = -1
 
 
 func _ready() -> void:
@@ -81,15 +84,20 @@ func _choose() -> void:
 	for st: Station in level.stations:
 		if st == _last_station and level.stations.size() > 1:
 			continue
-		if st.is_free():
+		if st.is_reserved_against(self):
+			continue
+		if st.is_available_for(self) and st.queue_size() == 0:
 			free.append(st)
-		else:
+		elif st.queue_size() < st.max_queue:
 			busy.append(st)
 	var pick: Station = null
 	if not free.is_empty():
 		pick = free[rng.randi() % free.size()]
 	elif not busy.is_empty():
-		pick = busy[rng.randi() % busy.size()]
+		# shortest line wins, ties broken randomly
+		busy.shuffle()
+		busy.sort_custom(func(a: Station, b: Station) -> bool: return a.queue_size() < b.queue_size())
+		pick = busy[0]
 	if pick == null:
 		_set_mode(Mode.REST)
 		return
@@ -141,17 +149,31 @@ func _walk(delta: float) -> void:
 	if arrived:
 		if target.is_turn_of(self) and begin_use(target):
 			return
-		target.join_queue(self)
+		if not target.join_queue(self):
+			_last_station = target
+			_set_mode(Mode.CHOOSE)
+			return
 		_set_mode(Mode.QUEUE)
-		var pos: int = maxi(target.queue_position(self), 0)
-		_go_to(level.nearest_walkable(target.interact_point() + Vector2(26.0 * (pos + 1), 10.0)))
+		_queue_pos = -1
 
 
 func _queue(delta: float) -> void:
 	if target == null or not is_instance_valid(target):
 		_set_mode(Mode.CHOOSE)
 		return
+	var pos: int = target.queue_position(self)
+	if pos == -1:
+		# dropped from the line (machine got reserved with a water cup)
+		_last_station = target
+		_set_mode(Mode.CHOOSE)
+		return
+	if pos != _queue_pos:
+		# line moved: step up to our new spot
+		_queue_pos = pos
+		_go_to(level.nearest_walkable(target.queue_spot(pos)))
 	_follow(delta)
+	if _path_i >= _path.size():
+		facing = (target.global_position - global_position).normalized()
 	if target.is_turn_of(self):
 		if global_position.distance_to(target.interact_point()) > 6.0 and _path_i >= _path.size():
 			_go_to(target.interact_point())
@@ -198,3 +220,19 @@ func is_angry() -> bool:
 
 func bubble() -> String:
 	return "怒" if mode == Mode.ANGRY else ""
+
+
+## Shoved off: knocked back past the exit point with a hop and a flash.
+func _leave_station_motion(st: Station, reason: StringName) -> void:
+	if reason != &"pushed":
+		super._leave_station_motion(st, reason)
+		return
+	var away: Vector2 = (st.exit_point() - st.global_position).normalized()
+	if away == Vector2.ZERO:
+		away = Vector2.DOWN
+	away = away.rotated(rng.randf_range(-0.5, 0.5))
+	var to: Vector2 = level.nearest_walkable(st.exit_point() + away * knockback) if level != null else st.exit_point()
+	glide_to(to, 0.32)
+	visual.hop(14.0, 0.34)
+	visual.flash()
+	facing = -away

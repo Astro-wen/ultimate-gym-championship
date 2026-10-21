@@ -7,6 +7,9 @@ const GOER_LOOKS: Array[Dictionary] = [
 	{"body": Color(0.85, 0.25, 0.25), "legs": Color(0.2, 0.2, 0.25), "hair": Color(0.15, 0.1, 0.08), "skin": [0, 0], "pose": &"goer_red"},
 	{"body": Color(0.3, 0.7, 0.4), "legs": Color(0.25, 0.25, 0.35), "hair": Color(0.85, 0.65, 0.3), "skin": [0, 2], "pose": &"goer_green"},
 	{"body": Color(0.95, 0.6, 0.2), "legs": Color(0.15, 0.15, 0.2), "hair": Color(0.3, 0.2, 0.15), "skin": [3, 0], "pose": &"goer_blue"},
+	{"body": Color(0.95, 0.85, 0.5), "legs": Color(0.3, 0.3, 0.4), "hair": Color(0.9, 0.75, 0.35), "skin": [0, 3], "pose": &"goer_blonde"},
+	{"body": Color(0.55, 0.75, 0.95), "legs": Color(0.45, 0.4, 0.3), "hair": Color(0.6, 0.45, 0.3), "skin": [0, 7], "pose": &"goer_sky"},
+	{"body": Color(0.6, 0.35, 0.25), "legs": Color(0.2, 0.2, 0.25), "hair": Color(0.15, 0.12, 0.1), "skin": [2, 2], "pose": &"goer_brown"},
 ]
 const PLAYER_SKIN: Array[int] = [0, 6]
 const PM_SKIN: Array[int] = [1, 0]
@@ -36,11 +39,17 @@ func _ready() -> void:
 	level.world.add_child(player)
 	LocalArt.apply_skin(player.visual, PLAYER_SKIN[0], PLAYER_SKIN[1])
 	player.visual.pose_char = &"player"
+	var cup := WaterCup.new()
+	cup.name = "WaterCup"
+	cup.owner_actor = player
+	level.world.add_child(cup)
+	player.cup = cup
 	_spawn_npcs()
 	hud = Hud.new()
 	hud.player = player
 	add_child(hud)
 	Sfx.attach(self)
+	Juice.attach(self, level.world)
 	var cam := ShakeCamera.new()
 	cam.name = "Camera"
 	cam.position = GymLevel.ROOM * 0.5

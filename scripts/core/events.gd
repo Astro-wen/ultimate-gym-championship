@@ -13,4 +13,8 @@ signal reached_goal()
 signal run_started()
 signal run_finished(result: Dictionary)
 signal buff_applied(kind: StringName, duration: float)
+signal shoved(pusher: Node, victim: Node, at: Vector2)
+signal cup_moved(carried: bool)
+## Short HUD banner. kind: &"info" | &"good" | &"warn" | &"bad"
+signal toast(text: String, kind: StringName)
 @warning_ignore_restore("unused_signal")

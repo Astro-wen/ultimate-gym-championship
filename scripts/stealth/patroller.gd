@@ -17,7 +17,7 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 ## PM returns to the route instead of staring at a busy machine forever.
 @export var noise_cooldown: float = 5.0
 ## Awareness tuning (see OPUS_BRIEF 3.7).
-@export var base_rise: float = 0.6
+@export var base_rise: float = 0.5
 @export var fall_rate: float = 0.4
 @export var fall_delay: float = 0.6
 @export var speed_factor_still: float = 0.3

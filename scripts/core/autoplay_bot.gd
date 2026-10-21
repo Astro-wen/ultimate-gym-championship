@@ -128,7 +128,7 @@ func _play(g: Minigame, _delta: float) -> void:
 
 func _navigate(delta: float) -> void:
 	_repath_t -= delta
-	if _target == null or not _target.is_free() or _repath_t <= 0.0:
+	if _target == null or _repath_t <= 0.0 or (player.queued == null and not _target.is_turn_of(player) and _target.queue_size() >= _target.max_queue):
 		_pick_target()
 		_repath_t = 1.0
 	if _target == null:
@@ -137,7 +137,9 @@ func _navigate(delta: float) -> void:
 	var goal: Vector2 = _target.interact_point()
 	if player.global_position.distance_to(goal) < 8.0:
 		_release_moves()
-		if player.focus_station == _target and not _held.has(&"interact"):
+		# no shoving: only press E to claim or to join the line
+		var waiting: bool = player.queued == _target and not _target.is_turn_of(player)
+		if player.focus_station == _target and not waiting and not _held.has(&"interact"):
 			_press(&"interact")
 		return
 	while _path_i < _path.size() and player.global_position.distance_to(_path[_path_i]) < 4.0:
@@ -158,15 +160,22 @@ func _set_move(a: StringName, on: bool) -> void:
 
 
 func _pick_target() -> void:
-	var best: Station = null
-	var best_d: float = INF
-	for st: Station in level.stations:
-		if not st.is_free():
-			continue
-		var d: float = player.global_position.distance_to(st.interact_point())
-		if d < best_d:
-			best_d = d
-			best = st
+	var best: Station = player.queued
+	if best == null:
+		# nearest machine we can use now; otherwise the shortest line
+		var best_score: float = INF
+		for st: Station in level.stations:
+			if st.is_reserved_against(player) or st == player.last_station:
+				continue
+			var d: float = player.global_position.distance_to(st.interact_point())
+			var score: float = d
+			if not st.is_turn_of(player):
+				if st.queue_size() >= st.max_queue:
+					continue
+				score += 400.0 + 300.0 * st.queue_size()
+			if score < best_score:
+				best_score = score
+				best = st
 	if best != _target or _path.is_empty():
 		_target = best
 		_path = level.find_path(player.global_position, best.interact_point()) if best != null else PackedVector2Array()

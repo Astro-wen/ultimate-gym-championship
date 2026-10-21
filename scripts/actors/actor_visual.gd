@@ -18,6 +18,9 @@ var pose_char: StringName = &""
 var _own_poses: Dictionary = {}   # StringName station id -> Texture2D (or null)
 var _walk_t: float = 0.0
 var _swap_on: bool = false
+## Hop height (px) and squash (-0.3..0.3) for impact animations.
+var lift: float = 0.0
+var squash: float = 0.0
 
 const SWAP_SHADER_CODE: String = """
 shader_type canvas_item;
@@ -65,8 +68,9 @@ func _draw() -> void:
 	if actor == null:
 		return
 	draw_set_transform(Vector2.ZERO)
-	# shadow
+	# shadow stays on the ground; the body can hop (lift) and squash
 	draw_ellipse_shadow()
+	draw_set_transform(Vector2(0, -lift), 0.0, Vector2(1.0 + squash, 1.0 - squash))
 	if actor.station != null and is_instance_valid(actor.station):
 		_draw_pose(actor.station.data)
 	elif walk_sheet != null:
@@ -220,3 +224,19 @@ func _own_pose(d: StationData) -> Texture2D:
 	if not _own_poses.has(d.id):
 		_own_poses[d.id] = LocalArt.tex(LocalArt.pose_path(pose_char, d))
 	return _own_poses[d.id]
+
+
+## Brief white-hot flash (hit feedback).
+func flash(secs: float = 0.18) -> void:
+	modulate = Color(2.6, 2.6, 2.6)
+	create_tween().tween_property(self, ^"modulate", Color.WHITE, secs)
+
+
+## Knocked off balance: a hop with squash on landing.
+func hop(height: float = 12.0, secs: float = 0.3) -> void:
+	var tw: Tween = create_tween()
+	tw.tween_property(self, ^"lift", height, secs * 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, ^"lift", 0.0, secs * 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(self, ^"squash", 0.22, 0.05)
+	tw.tween_property(self, ^"squash", 0.0, 0.18).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+

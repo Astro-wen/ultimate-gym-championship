@@ -28,7 +28,9 @@ func _ready() -> void:
 	_sounds[&"miss"] = _tone([[160.0, 0.12]], 0.6, &"noise")
 	_sounds[&"set"] = _tone([[523.0, 0.07], [659.0, 0.07], [784.0, 0.07], [1047.0, 0.16]], 0.45, &"square")
 	_sounds[&"alarm"] = _tone([[988.0, 0.12], [740.0, 0.12], [988.0, 0.12], [740.0, 0.2]], 0.5, &"saw")
-	_sounds[&"push"] = _tone([[90.0, 0.18]], 0.7, &"noise")
+	_sounds[&"shove"] = _mix(_tone([[140.0, 0.05], [70.0, 0.14]], 0.9, &"square"), _tone([[300.0, 0.12]], 0.8, &"noise"))
+	_sounds[&"clink"] = _tone([[1568.0, 0.04], [2093.0, 0.09]], 0.35, &"triangle")
+	_sounds[&"queue"] = _tone([[660.0, 0.05], [880.0, 0.06]], 0.3, &"square")
 	_sounds[&"beat"] = _tone([[70.0, 0.06], [0.0, 0.05], [60.0, 0.08]], 0.7, &"sine")
 	_sounds[&"start"] = _tone([[392.0, 0.08], [523.0, 0.08], [659.0, 0.14]], 0.45, &"square")
 	_sounds[&"win"] = _tone([[523.0, 0.1], [659.0, 0.1], [784.0, 0.1], [1047.0, 0.1], [784.0, 0.1], [1047.0, 0.3]], 0.45, &"square")
@@ -49,9 +51,11 @@ func _ready() -> void:
 		if who.is_in_group(&"player"):
 			play(&"set"))
 	Events.player_detected.connect(func(_by: Node) -> void: play(&"alarm"))
-	Events.noise_made.connect(func(_at: Vector2, loud: float) -> void:
-		if loud >= 1.0:
-			play(&"push"))
+	Events.shoved.connect(func(_p: Node, _v: Node, _at: Vector2) -> void: play(&"shove"))
+	Events.cup_moved.connect(func(_c: bool) -> void: play(&"clink"))
+	Events.toast.connect(func(_t: String, kind: StringName) -> void:
+		if kind == &"info":
+			play(&"queue"))
 	Events.alert_changed.connect(func(v: float) -> void: _alert = v)
 	Events.run_started.connect(func() -> void:
 		play(&"start")
@@ -59,6 +63,17 @@ func _ready() -> void:
 	Events.run_finished.connect(func(r: Dictionary) -> void:
 		_bgm.stop()
 		play(&"win" if r.get("state") == GameState.State.WON else &"lose"))
+
+
+## Stop everything on the way out (a voice still playing at quit is reported
+## as a leaked AudioStreamPlayback by the engine).
+func _exit_tree() -> void:
+	for p: AudioStreamPlayer in _players:
+		p.stop()
+		p.stream = null
+	if _bgm != null:
+		_bgm.stop()
+		_bgm.stream = null
 
 
 func play(id: StringName) -> void:
@@ -172,3 +187,17 @@ static func _make_bgm() -> AudioStreamWAV:
 	w.loop_begin = 0
 	w.loop_end = steps * per
 	return w
+
+
+## Sums two mono 16-bit streams (for layered hits).
+static func _mix(a: AudioStreamWAV, b: AudioStreamWAV) -> AudioStreamWAV:
+	var da: PackedByteArray = a.data
+	var db: PackedByteArray = b.data
+	var n: int = maxi(da.size(), db.size())
+	var out := PackedByteArray()
+	out.resize(n)
+	for i: int in range(0, n - 1, 2):
+		var sa: int = da.decode_s16(i) if i + 1 < da.size() else 0
+		var sb: int = db.decode_s16(i) if i + 1 < db.size() else 0
+		out.encode_s16(i, clampi(sa + sb, -32768, 32767))
+	return _wav(out)

@@ -36,7 +36,10 @@ const WALL: float = 24.0
 	Rect2(550, 370, 60, 40),
 ]
 @export var player_spawn: Vector2 = Vector2(120, 480)
-@export var npc_spawns: Array[Vector2] = [Vector2(480, 470), Vector2(620, 470), Vector2(760, 470)]
+@export var npc_spawns: Array[Vector2] = [
+	Vector2(300, 480), Vector2(420, 470), Vector2(540, 480),
+	Vector2(660, 470), Vector2(780, 480), Vector2(880, 470),
+]
 ## Patroller route; it pauses and sweeps at each point.
 @export var patrol_points: Array[Vector2] = [
 	Vector2(480, 120), Vector2(200, 300), Vector2(480, 450), Vector2(800, 300),

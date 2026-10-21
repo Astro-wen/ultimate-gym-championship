@@ -38,4 +38,6 @@ extends Resource
 @export var exit_offset: Vector2 = Vector2(0, 40)
 ## Footprint of the solid body, in pixels (centered on origin, bottom aligned).
 @export var footprint: Vector2 = Vector2(40, 24)
+## Direction the waiting line extends from the interact point.
+@export var queue_dir: Vector2 = Vector2(0, 1)
 @export var placeholder_color: Color = Color(0.4, 0.4, 0.5)

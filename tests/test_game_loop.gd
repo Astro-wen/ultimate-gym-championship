@@ -150,3 +150,75 @@ func test_respawn_spot_is_safe_for_a_while() -> void:
 		pm._update_awareness(1.0 / 60.0)
 	check(pm.awareness < 0.01, "standing at the respawn spot is safe right after a catch (%.2f)" % pm.awareness)
 	check(p.global_position.distance_to(lvl.player_spawn) < 1.0, "player at spawn")
+
+
+func test_water_cup_reserves_machine() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var lvl: GymLevel = m.get(&"level")
+	var bench: Station = lvl.stations[0]
+	p.snap_to(bench.exit_point())
+	p.facing = Vector2.UP
+	check(p.cup_drop_target() == bench, "dropping here would reserve the bench")
+	p.toggle_cup()
+	check(not p.cup.carried, "cup on the floor")
+	check(bench.reserved_by == p, "bench reserved by the player")
+	# a regular can't take it
+	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
+	check(not g.begin_use(bench), "regular can't claim the reserved bench")
+	check(p.interact(bench), "player can still use it")
+	check(p.station == bench, "player on the bench")
+	p.end_use()
+	await step_frames(1)
+	p.snap_to(p.cup.global_position + Vector2(0, 10))
+	check(p.can_pick_up_cup(), "cup in reach")
+	p.toggle_cup()
+	check(p.cup.carried and bench.reserved_by == null, "picking it up frees the bench")
+
+
+func test_player_queues_then_gets_turn() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var lvl: GymLevel = m.get(&"level")
+	var st: Station = lvl.stations[1]
+	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
+	check(g.begin_use(st), "regular on the dumbbells")
+	p.snap_to(st.exit_point())
+	check(p.interact(st), "E on a busy machine joins the line")
+	check(p.queued == st and st.queue_position(p) == 0, "player first in line")
+	check(p.station == null, "not on it yet")
+	st.finish_use(g)
+	await step_frames(1)
+	check(st.is_turn_of(p), "player's turn once it frees up")
+	check(not st.is_turn_of(g), "the regular can't cut in")
+	check(p.interact(st), "E takes the turn")
+	check(p.station == st and p.queued == null, "player on the machine, out of the line")
+
+
+func test_shove_knocks_regular_back() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var lvl: GymLevel = m.get(&"level")
+	var st: Station = lvl.stations[4]
+	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
+	g.begin_use(st)
+	st.tick(5.0)   # past push protection
+	p.snap_to(st.exit_point())
+	p.interact(st)
+	var shoves: Array[int] = [0]
+	var cb: Callable = func(_a: Node, _b: Node, _c: Vector2) -> void: shoves[0] += 1
+	Events.shoved.connect(cb)
+	check(p.interact(st), "first in line can shove")
+	Events.shoved.disconnect(cb)
+	check_eq(shoves[0], 1, "shove event fired")
+	check(p.station == st, "player took the bag")
+	check(g.station == null and g.is_angry(), "regular knocked off and angry")
+	check(g.global_position.distance_to(st.exit_point()) > 10.0, "regular knocked back past the exit point")
+	await step_frames(30)
+	check(is_equal_approx(Engine.time_scale, 1.0), "hit-stop released")

@@ -61,6 +61,10 @@ leave={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":81)]
 }
+cup={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":70)]
+}
 restart={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":82)]
