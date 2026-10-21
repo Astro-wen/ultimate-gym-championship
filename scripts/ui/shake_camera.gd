@@ -18,9 +18,7 @@ func _ready() -> void:
 	Events.rep_completed.connect(func(s: Node, who: Node, good: bool) -> void:
 		if good and who.is_in_group(&"player") and (s as Station).data.minigame == &"timing":
 			add_trauma(0.3))
-	Events.noise_made.connect(func(_at: Vector2, loud: float) -> void:
-		if loud >= 1.0:
-			add_trauma(0.4))
+	Events.shoved.connect(func(_p: Node, _v: Node, _at: Vector2) -> void: add_trauma(0.75))
 
 
 func add_trauma(amount: float) -> void:

@@ -179,3 +179,33 @@ func _invariants(stations: Array[Station], actors: Array[Node2D], step: int) -> 
 		if held != null and not check(held.is_user(a), "step %d: claim map points to wrong station" % step):
 			return false
 	return true
+
+
+func test_reservation_blocks_others() -> void:
+	var s: Station = _station()
+	var owner_a: Node2D = _actor(true)
+	var other: Node2D = _actor()
+	s.join_queue(other)
+	s.reserve(owner_a)
+	check(s.queue_position(other) == -1, "others are dropped from the line when reserved")
+	check(not s.try_claim(other), "others can't claim a reserved machine")
+	check(not s.join_queue(other), "others can't queue for a reserved machine")
+	check(s.is_turn_of(owner_a), "owner skips the line")
+	check(s.try_claim(owner_a), "owner claims it")
+	s.release(owner_a)
+	s.unreserve()
+	check(s.try_claim(other), "free for everyone after unreserve")
+
+
+func test_queue_limit_and_spots() -> void:
+	var s: Station = _station()
+	var a: Node2D = _actor()
+	s.try_claim(a)
+	var line: Array[Node2D] = []
+	for i: int in s.max_queue:
+		var n: Node2D = _actor()
+		check(s.join_queue(n), "join %d" % i)
+		line.append(n)
+	check(not s.join_queue(_actor()), "line is capped at max_queue")
+	check(s.queue_spot(0) != s.queue_spot(1), "each place in line has its own spot")
+	check(s.queue_spot(1).distance_to(s.interact_point()) > s.queue_spot(0).distance_to(s.interact_point()), "later places stand further back")

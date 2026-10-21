@@ -11,9 +11,15 @@ signal user_removed(who: Node, reason: StringName)
 ## Seconds after claiming during which a user can't be pushed off.
 @export var push_protect: float = 3.0
 @export var interact_radius: float = 44.0
+## Longest line a machine allows.
+@export var max_queue: int = 3
+@export var queue_spacing: float = 34.0
 
 ## instance_id -> Station, shared by every station so one actor can't hold two.
 static var _claims: Dictionary = {}
+
+## Who holds this machine with a water cup (null = nobody).
+var reserved_by: Node = null
 
 var _users: Array[Node] = []
 var _claimed_at: Dictionary = {}     # instance_id -> float (seconds, station clock)
@@ -91,7 +97,7 @@ func try_claim(who: Node) -> bool:
 		return false
 	if station_of(who) != null:
 		return false
-	if _users.size() >= data.capacity:
+	if _users.size() >= data.capacity or is_reserved_against(who):
 		return false
 	var id: int = who.get_instance_id()
 	_users.append(who)
@@ -158,11 +164,55 @@ func _on_user_exiting(who: Node) -> void:
 	release(who, &"removed")
 
 
-# --- queue (NPCs only) ---------------------------------------------------
+# --- reservation (water cup) -----------------------------------------------
 
-func join_queue(who: Node) -> void:
-	if who != null and not _queue.has(who) and not _users.has(who):
-		_queue.append(who)
+## A water cup next to the machine reserves it: only `who` may claim it, and
+## everyone else in line gives up.
+func reserve(who: Node) -> void:
+	reserved_by = who
+	for i: int in range(_queue.size() - 1, -1, -1):
+		if _queue[i] != who:
+			_queue.remove_at(i)
+	queue_redraw()
+
+
+func unreserve() -> void:
+	reserved_by = null
+	queue_redraw()
+
+
+func is_reserved_against(who: Node) -> bool:
+	return reserved_by != null and is_instance_valid(reserved_by) and reserved_by != who
+
+
+## A slot is free and no one else's cup is holding it.
+func is_available_for(who: Node) -> bool:
+	return is_free() and not is_reserved_against(who)
+
+
+# --- queue ------------------------------------------------------------------
+
+## Joins the line. False if the line is full or the machine is reserved.
+func join_queue(who: Node) -> bool:
+	if who == null or _users.has(who) or is_reserved_against(who):
+		return false
+	if _queue.has(who):
+		return true
+	_prune_queue()
+	if _queue.size() >= max_queue:
+		return false
+	_queue.append(who)
+	return true
+
+
+func queue_size() -> int:
+	_prune_queue()
+	return _queue.size()
+
+
+## Where the i-th person in line stands (0 = next up).
+func queue_spot(i: int) -> Vector2:
+	return interact_point() + data.queue_dir.normalized() * queue_spacing * float(i + 1)
 
 
 func leave_queue(who: Node) -> void:
@@ -181,10 +231,13 @@ func _prune_queue() -> void:
 			_queue.remove_at(i)
 
 
-## True if `who` may claim now: a slot is free and nobody is ahead in line.
+## True if `who` may claim now: a slot is free, it isn't reserved for someone
+## else, and nobody is ahead in line. The cup owner skips the line.
 func is_turn_of(who: Node) -> bool:
 	if not is_free():
 		return false
+	if reserved_by != null and is_instance_valid(reserved_by):
+		return who == reserved_by
 	_prune_queue()
 	var pos: int = _queue.find(who)
 	var free_slots: int = data.capacity - _users.size()

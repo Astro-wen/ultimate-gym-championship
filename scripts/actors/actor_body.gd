@@ -79,10 +79,15 @@ func _detach(reason: StringName) -> void:
 	if st.user_removed.is_connected(_on_station_user_removed):
 		st.user_removed.disconnect(_on_station_user_removed)
 	if is_instance_valid(st):
-		glide_to(st.exit_point())
+		_leave_station_motion(st, reason)
 	pose_amount = 0.0
 	set_collision_enabled(true)
 	_on_use_ended(reason)
+
+
+## How the body gets off a station. Default: a quick glide to the exit point.
+func _leave_station_motion(st: Station, _reason: StringName) -> void:
+	glide_to(st.exit_point())
 
 
 ## Moves the body instantly (physics-wise) but lets the sprite glide there,

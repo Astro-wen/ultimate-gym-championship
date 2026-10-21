@@ -60,7 +60,7 @@ func _tap(a: StringName) -> void:
 
 
 func _release_moves() -> void:
-	for a: StringName in [&"move_left", &"move_right", &"move_up", &"move_down", &"sprint", &"leave"]:
+	for a: StringName in [&"move_left", &"move_right", &"move_up", &"move_down", &"sprint", &"leave", &"cup"]:
 		if _held.has(a):
 			_release(a)
 
@@ -127,9 +127,16 @@ func _play(g: Minigame, _delta: float) -> void:
 
 
 func _navigate(delta: float) -> void:
+	if _fetch_cup():
+		return
 	_repath_t -= delta
-	if _target == null or not _target.is_free() or _repath_t <= 0.0:
+	if _target_unusable():
+		_target = null
 		_pick_target()
+	elif _repath_t <= 0.0:
+		# keep the target (no dithering), just refresh the path
+		_path = level.find_path(player.global_position, _target.interact_point())
+		_path_i = 0
 		_repath_t = 1.0
 	if _target == null:
 		_release_moves()
@@ -137,7 +144,12 @@ func _navigate(delta: float) -> void:
 	var goal: Vector2 = _target.interact_point()
 	if player.global_position.distance_to(goal) < 8.0:
 		_release_moves()
-		if player.focus_station == _target and not _held.has(&"interact"):
+		# no shoving: only press E to claim or to join the line
+		var waiting: bool = player.queued == _target and not _target.is_turn_of(player)
+		# busy machine: set the cup down to reserve it (regulars then leave the line)
+		if waiting and player.cup != null and player.cup.carried and player.cup_drop_target() == _target:
+			_tap(&"cup")
+		if player.focus_station == _target and not waiting and not _held.has(&"interact"):
 			_press(&"interact")
 		return
 	while _path_i < _path.size() and player.global_position.distance_to(_path[_path_i]) < 4.0:
@@ -158,16 +170,57 @@ func _set_move(a: StringName, on: bool) -> void:
 
 
 func _pick_target() -> void:
-	var best: Station = null
-	var best_d: float = INF
-	for st: Station in level.stations:
-		if not st.is_free():
-			continue
-		var d: float = player.global_position.distance_to(st.interact_point())
-		if d < best_d:
-			best_d = d
-			best = st
+	var best: Station = player.queued
+	if best == null:
+		# nearest machine we can use now; otherwise the shortest line
+		var best_score: float = INF
+		for st: Station in level.stations:
+			if st.is_reserved_against(player) or st == player.last_station:
+				continue
+			var d: float = player.global_position.distance_to(st.interact_point())
+			var score: float = d
+			if not st.is_turn_of(player):
+				if st.queue_size() >= st.max_queue:
+					continue
+				score += 400.0 + 300.0 * st.queue_size()
+			if score < best_score:
+				best_score = score
+				best = st
 	if best != _target or _path.is_empty():
 		_target = best
 		_path = level.find_path(player.global_position, best.interact_point()) if best != null else PackedVector2Array()
 		_path_i = 0
+
+
+## After a set on the machine our cup reserved, walk back and pick it up.
+## Returns true while busy with that.
+func _fetch_cup() -> bool:
+	var cup: WaterCup = player.cup
+	if cup == null or cup.carried:
+		return false
+	if cup.reserved != null and player.last_station != cup.reserved:
+		return false   # still waiting to use the machine it holds
+	if player.can_pick_up_cup():
+		_release_moves()
+		_tap(&"cup")
+		return true
+	var d: Vector2 = cup.global_position + Vector2(0, 14) - player.global_position
+	_set_move(&"move_right", d.x > 2.0)
+	_set_move(&"move_left", d.x < -2.0)
+	_set_move(&"move_down", d.y > 2.0)
+	_set_move(&"move_up", d.y < -2.0)
+	return true
+
+
+## Re-pick only when the current machine can't work out: just used it,
+## someone else's cup holds it, or its line is full and we're not in it.
+func _target_unusable() -> bool:
+	if _target == null:
+		return true
+	if player.queued == _target:
+		return false
+	if player.last_station == _target and player.station == null:
+		return true
+	if _target.is_reserved_against(player):
+		return true
+	return not _target.is_turn_of(player) and _target.queue_size() >= _target.max_queue

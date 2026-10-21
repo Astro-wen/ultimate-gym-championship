@@ -17,7 +17,7 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 ## PM returns to the route instead of staring at a busy machine forever.
 @export var noise_cooldown: float = 5.0
 ## Awareness tuning (see OPUS_BRIEF 3.7).
-@export var base_rise: float = 0.6
+@export var base_rise: float = 0.5
 @export var fall_rate: float = 0.4
 @export var fall_delay: float = 0.6
 @export var speed_factor_still: float = 0.3
@@ -193,12 +193,13 @@ func _update_awareness(delta: float) -> void:
 	if seen:
 		_unseen_t = 0.0
 		var stealthy: bool = GameState.has_buff(&"stealthy")
-		var in_cover: bool = level.is_in_cover(p.global_position)
+		# standing in a line you blend in with the crowd: counts as cover
+		var in_cover: bool = level.is_in_cover(p.global_position) or p.queued != null
 		awareness += rise_rate(global_position.distance_to(p.global_position), p.speed_kind, p.exposure(), in_cover, stealthy) * delta
 	else:
 		_unseen_t += delta
 		if _unseen_t >= fall_delay:
-			var mult: float = 2.0 if level.is_in_cover(p.global_position) else 1.0
+			var mult: float = 2.0 if level.is_in_cover(p.global_position) or p.queued != null else 1.0
 			awareness -= fall_rate * mult * delta
 	awareness = clampf(awareness, 0.0, 1.0)
 	if awareness >= 1.0:

@@ -1,7 +1,9 @@
 class_name Player
 extends ActorBody
 ## The office worker. Slow walk by default, Shift to run (louder, more visible).
-## E near a station claims it and starts its minigame; Q leaves.
+## E near a machine: use it if it's your turn, otherwise join its line (first
+## in line may shove the user off). F: put down / pick up the water cup; a cup
+## next to a machine reserves it. Q leaves a machine.
 
 signal minigame_changed(game: Minigame)
 
@@ -17,15 +19,25 @@ signal minigame_changed(game: Minigame)
 ## After leaving a machine, it can't be re-mounted for this long (mashing E
 ## through the last rep shouldn't put you straight back on).
 @export var remount_delay: float = 0.8
+## Walking further than this from the machine you're queued for leaves the line.
+@export var queue_leave_dist: float = 120.0
+## Once it's your turn, the slot is held this long before you lose your place.
+@export var turn_hold: float = 5.0
+## How far in front of the feet the cup is set down / can be picked up from.
+@export var cup_reach: float = 34.0
 
 const MINIGAME_ACTIONS: Array[StringName] = [&"interact", &"move_left", &"move_right", &"move_up", &"move_down"]
 
 var minigame: Minigame = null
 var input_enabled: bool = true
-## Station highlighted for interaction (nearest in reach).
+## Station highlighted for interaction (nearest in reach, or the one queued for).
 var focus_station: Station = null
+## Machine whose line we're standing in (null = none).
+var queued: Station = null
+var cup: WaterCup = null
 var _buffer_t: float = 0.0
 var _remount_t: float = 0.0
+var _turn_t: float = 0.0
 ## Last seen pressed state per minigame action. Edges are derived from this
 ## instead of just_pressed so nothing is lost across pauses or frame hiccups,
 ## and a key still held from mounting doesn't count as a new press.
@@ -53,12 +65,15 @@ func _physics_process(delta: float) -> void:
 		_drive_minigame(delta)
 		return
 	_move(delta)
+	_update_queue(delta)
 	_set_focus(_find_focus_station())
 	_buffer_t = maxf(_buffer_t - delta, 0.0)
 	_remount_t = maxf(_remount_t - delta, 0.0)
+	if Input.is_action_just_pressed(&"cup"):
+		toggle_cup()
 	if Input.is_action_just_pressed(&"interact"):
 		_buffer_t = interact_buffer
-	if _buffer_t > 0.0 and focus_station != null and try_use(focus_station):
+	if _buffer_t > 0.0 and focus_station != null and interact(focus_station):
 		_buffer_t = 0.0
 
 
@@ -90,13 +105,17 @@ func _set_focus(st: Station) -> void:
 
 
 func _find_focus_station() -> Station:
+	if queued != null:
+		return queued
 	var best: Station = null
 	var best_d: float = INF
 	for n: Node in get_tree().get_nodes_in_group(&"stations"):
 		var st: Station = n as Station
 		if st == null or (st == last_station and _remount_t > 0.0):
 			continue
-		var d: float = st.distance_to_point(global_position)
+		# footprint distance, or distance to where you stand to use it (whichever
+		# is closer): the standing spot must always be in reach
+		var d: float = minf(st.distance_to_point(global_position), global_position.distance_to(st.interact_point()))
 		# prefer the one we're facing when two are in reach
 		if facing.dot(st.global_position - global_position) > 0.0:
 			d -= 6.0
@@ -106,21 +125,137 @@ func _find_focus_station() -> Station:
 	return best
 
 
-## Claim the station, or shove its current (NPC) user off if allowed.
-func try_use(st: Station) -> bool:
-	if begin_use(st):
+# --- queue -------------------------------------------------------------------
+
+func _update_queue(delta: float) -> void:
+	if queued == null:
+		return
+	if not is_instance_valid(queued) or queued.queue_position(self) == -1:
+		queued = null
+		return
+	if global_position.distance_to(queued.interact_point()) > queue_leave_dist:
+		leave_queue()
+		return
+	if queued.is_turn_of(self):
+		_turn_t += delta
+		if _turn_t > turn_hold:
+			leave_queue()
+			Events.toast.emit("没及时上器械，排队作废了", &"warn")
+	else:
+		_turn_t = 0.0
+
+
+func leave_queue() -> void:
+	if queued != null and is_instance_valid(queued):
+		queued.leave_queue(self)
+	queued = null
+	_turn_t = 0.0
+
+
+## What E does at `st`, as a short label for the HUD (empty = nothing).
+func interact_label(st: Station) -> String:
+	if st == null:
+		return ""
+	var name_s: String = st.data.display_name
+	if st.is_turn_of(self):
+		return ("轮到你了！上%s" if queued == st else "开始%s") % name_s
+	if st.is_reserved_against(self):
+		return ""
+	if queued == st:
+		if st.queue_position(self) == 0 and _pushable_user(st) != null:
+			return "挤开对方抢%s" % name_s
+		return ""
+	if st.queue_size() >= st.max_queue:
+		return ""
+	return "排队等%s" % name_s
+
+
+## E at a machine: use it if it's our turn, shove if first in line and allowed,
+## otherwise join the line.
+func interact(st: Station) -> bool:
+	if st.is_turn_of(self):
+		return try_use(st)
+	if queued == st:
+		if st.queue_position(self) == 0:
+			var victim: Node = _pushable_user(st)
+			if victim != null:
+				return shove(st, victim)
+		return false
+	if st.join_queue(self):
+		if queued != null and queued != st:
+			queued.leave_queue(self)
+		queued = st
+		_turn_t = 0.0
+		Events.toast.emit("开始排队：%s（前面 %d 人）" % [st.data.display_name, st.queue_position(self) + (0 if st.is_free() else 1)], &"info")
 		return true
-	for u: Node in st.users():
-		if u != self and st.can_push(self, u):
-			if st.push(self, u):
-				_attach(st)
-				return true
 	return false
 
+
+func _pushable_user(st: Station) -> Node:
+	for u: Node in st.users():
+		if u != self and st.can_push(self, u):
+			return u
+	return null
+
+
+## Claim the station if free (used when it's our turn, and by tools/tests).
+func try_use(st: Station) -> bool:
+	if begin_use(st):
+		if queued == st:
+			queued = null
+		return true
+	return false
+
+
+## Shove `victim` off `st` and take it. Loud, and it hits hard.
+func shove(st: Station, victim: Node) -> bool:
+	var from: Vector2 = global_position
+	if not st.push(self, victim):
+		return false
+	queued = null
+	_attach(st)
+	Events.shoved.emit(self, victim, (from + st.global_position) * 0.5)
+	return true
+
+
+# --- water cup -----------------------------------------------------------------
+
+## Station the cup would reserve if dropped now (for the HUD), or null.
+func cup_drop_target() -> Station:
+	if cup == null or not cup.carried:
+		return null
+	return WaterCup.station_near(_cup_drop_point(), get_tree())
+
+
+func can_pick_up_cup() -> bool:
+	return cup != null and not cup.carried and global_position.distance_to(cup.global_position) <= cup_reach
+
+
+func _cup_drop_point() -> Vector2:
+	var dir: Vector2 = facing.normalized() if facing != Vector2.ZERO else Vector2.DOWN
+	return global_position + dir * 16.0
+
+
+func toggle_cup() -> void:
+	if cup == null:
+		return
+	if cup.carried:
+		var st: Station = cup.drop(_cup_drop_point())
+		Events.cup_moved.emit(false)
+		if st != null:
+			Events.toast.emit("水杯放在%s旁：别人不会来占" % st.data.display_name, &"good")
+	elif can_pick_up_cup():
+		cup.pick_up()
+		Events.cup_moved.emit(true)
+
+
+# --- using a machine -------------------------------------------------------------
 
 func _on_use_started() -> void:
 	visual.z_index = 1
 	_set_focus(null)
+	if queued != null:
+		leave_queue()
 	minigame = Minigame.create(station.data)
 	minigame.rep_done.connect(_on_rep_done)
 	# keys already held when mounting (the E that mounted us) are not presses

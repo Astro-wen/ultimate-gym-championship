@@ -10,6 +10,8 @@ extends Node
 ##   --npc-use=<i>          put GymGoer0 on station i, player next to it
 ##   --pause                pause right away
 ##   --end=won|caught|timeout  jump to the results screen
+##   --cup=<i>              drop the water cup at station i
+##   --shove=<i>            GymGoer0 on station i, player shoves it off
 
 var main: Node
 var shot_path: String = ""
@@ -47,6 +49,10 @@ static func apply_cmdline(m: Node) -> void:
 		d._use_station.call_deferred(int(opts["use"]))
 	if opts.has("npc-use"):
 		d._npc_use.call_deferred(int(opts["npc-use"]))
+	if opts.has("cup"):
+		d._cup_at.call_deferred(int(opts["cup"]))
+	if opts.has("shove"):
+		d._shove.call_deferred(int(opts["shove"]))
 	if opts.has("pause"):
 		d._pause.call_deferred()
 	if opts.has("end"):
@@ -59,6 +65,25 @@ func _npc_use(idx: int) -> void:
 	var st: Station = lvl.stations[idx]
 	g.begin_use(st)
 	(main.get(&"player") as Player).global_position = st.interact_point()
+
+
+func _cup_at(idx: int) -> void:
+	var lvl: GymLevel = main.get(&"level")
+	var p: Player = main.get(&"player")
+	p.snap_to(lvl.stations[idx].exit_point())
+	p.facing = Vector2.UP
+	p.toggle_cup()
+	p.snap_to(lvl.stations[idx].exit_point() + Vector2(40, 30))
+
+
+func _shove(idx: int) -> void:
+	_npc_use(idx)
+	var lvl: GymLevel = main.get(&"level")
+	var st: Station = lvl.stations[idx]
+	st.tick(5.0)
+	var p: Player = main.get(&"player")
+	p.interact(st)
+	p.interact(st)
 
 
 func _pause() -> void:
