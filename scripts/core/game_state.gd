@@ -7,6 +7,9 @@ enum State { READY, RUNNING, CAUGHT, WON, TIMEOUT }
 ## Training points needed to finish the day's workout.
 @export var training_goal: int = 36
 
+## Level picked in the menu (&"gym" | &"office"; &"" = show the menu).
+## Survives reset() and scene reloads on purpose.
+var selected_level: StringName = &""
 var state: State = State.READY
 var elapsed: float = 0.0
 var detections: int = 0

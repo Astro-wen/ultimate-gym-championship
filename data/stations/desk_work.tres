@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"desk_work"
+display_name = "敲完代码"
+use_time = 4.0
+capacity = 1
+minigame = &"alternate"
+reps_per_set = 14
+minigame_params = {"window": 1.0}
+stat = &"task"
+stat_gain = 1
+buff_kind = &"stealthy"
+buff_duration = 5.0
+noise = 0.15
+exposure = 1.0
+anim_name = &"desk_work"
+base_texture_path = "res://assets/sheets/interiors/int03_office_desks_768.png"
+base_region = Rect2(446, 460, 68, 112)
+anchor_offsets = Array[Vector2]([Vector2(0, -98)])
+exit_offset = Vector2(0, 30)
+footprint = Vector2(64, 40)
+placeholder_color = Color(0.75, 0.6, 0.4, 1)
+requires = Array[StringName]([])
+hint_text = "← → 交替敲键盘，把今天的活干完"
+sheet_pose = &"seated"
+draw_base = true
+once = true

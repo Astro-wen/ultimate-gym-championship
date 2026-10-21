@@ -4,7 +4,7 @@ extends Node
 ## balance checks and soak tests. Runs before the player each physics frame.
 
 var player: Player
-var level: GymLevel
+var level: Level
 ## Leave a station when the strongest awareness passes this.
 var flee_alert: float = 0.55
 var _path: PackedVector2Array = PackedVector2Array()

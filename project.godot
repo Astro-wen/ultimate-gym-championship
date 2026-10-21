@@ -65,6 +65,10 @@ cup={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":70)]
 }
+menu={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":77)]
+}
 restart={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":82)]

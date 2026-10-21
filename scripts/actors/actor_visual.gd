@@ -120,6 +120,14 @@ func _sheet_frame(col: int, row: int, offset: Vector2 = Vector2.ZERO) -> void:
 ## NPC poses built from their own walk sheet plus drawn props.
 func _draw_pose_sheet(d: StationData, t: float) -> void:
 	var iron := Color(0.22, 0.22, 0.28)
+	if d.sheet_pose == &"back":
+		# busy at a desk / counter / machine, back to the camera, small bob
+		_sheet_frame(1, 3, Vector2(0, -roundf(absf(sin(t * PI)) * 2.0)))
+		return
+	if d.sheet_pose == &"seated":
+		# behind a desk facing the camera, typing (the desk hides the legs)
+		_sheet_frame(1, 0, Vector2(0, -roundf(absf(sin(t * PI)) * 1.0)))
+		return
 	match d.minigame:
 		&"hold_release":
 			_sheet_frame(1, 0)
@@ -178,6 +186,9 @@ func _draw_pose(d: StationData) -> void:
 		return
 	if walk_sheet != null:
 		_draw_pose_sheet(d, t)
+		return
+	if d.sheet_pose == &"back" or d.sheet_pose == &"seated":
+		_draw_standing()
 		return
 	var outline := Color(0.1, 0.1, 0.15)
 	match d.minigame:

@@ -12,6 +12,7 @@ extends Node
 ##   --end=won|caught|timeout  jump to the results screen
 ##   --cup=<i>              drop the water cup at station i
 ##   --shove=<i>            GymGoer0 on station i, player shoves it off
+##   --level=office|gym|menu  which level to load (default: the menu)
 
 var main: Node
 var shot_path: String = ""
@@ -60,7 +61,7 @@ static func apply_cmdline(m: Node) -> void:
 
 
 func _npc_use(idx: int) -> void:
-	var lvl: GymLevel = main.get(&"level")
+	var lvl: Level = main.get(&"level")
 	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
 	var st: Station = lvl.stations[idx]
 	g.begin_use(st)
@@ -68,7 +69,7 @@ func _npc_use(idx: int) -> void:
 
 
 func _cup_at(idx: int) -> void:
-	var lvl: GymLevel = main.get(&"level")
+	var lvl: Level = main.get(&"level")
 	var p: Player = main.get(&"player")
 	p.snap_to(lvl.stations[idx].exit_point())
 	p.facing = Vector2.UP
@@ -78,7 +79,7 @@ func _cup_at(idx: int) -> void:
 
 func _shove(idx: int) -> void:
 	_npc_use(idx)
-	var lvl: GymLevel = main.get(&"level")
+	var lvl: Level = main.get(&"level")
 	var st: Station = lvl.stations[idx]
 	st.tick(5.0)
 	var p: Player = main.get(&"player")
@@ -104,7 +105,7 @@ func _end(kind: String) -> void:
 
 
 func _use_station(idx: int) -> void:
-	var lvl: GymLevel = main.get(&"level")
+	var lvl: Level = main.get(&"level")
 	var p: Player = main.get(&"player")
 	if idx >= 0 and idx < lvl.stations.size():
 		p.try_use(lvl.stations[idx])
@@ -116,7 +117,17 @@ func _process(_delta: float) -> void:
 		var img: Image = get_viewport().get_texture().get_image()
 		img.save_png(shot_path)
 		print("[shot] saved %s" % shot_path)
-		get_tree().quit()
+		main.call(&"quit_game")
+		set_process(false)
 	elif run_frames > 0 and _frame >= run_frames:
 		print("[soak] %d frames ok" % _frame)
-		get_tree().quit()
+		main.call(&"quit_game")
+		set_process(false)
+
+
+## `--level=office|gym|menu` picks the level before the scene is built.
+static func level_from_cmdline() -> void:
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("--level="):
+			var v: String = a.trim_prefix("--level=")
+			GameState.selected_level = &"" if v == "menu" else StringName(v)

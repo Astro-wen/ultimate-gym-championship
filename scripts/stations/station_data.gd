@@ -41,3 +41,16 @@ extends Resource
 ## Direction the waiting line extends from the interact point.
 @export var queue_dir: Vector2 = Vector2(0, 1)
 @export var placeholder_color: Color = Color(0.4, 0.4, 0.5)
+## Station ids that must have a finished set before the player may use this
+## one (office task order). Empty = always available.
+@export var requires: Array[StringName] = []
+## Overrides the minigame's own hint line (e.g. "← → 交替敲键盘").
+@export var hint_text: String = ""
+## Pose drawn from the walk sheet when there's no pose strip: &"" picks one by
+## minigame kind; &"back" = standing with the back to the camera.
+@export var sheet_pose: StringName = &""
+## Draw the base art / placeholder box. Off for things painted by the level
+## (elevator doors on the wall).
+@export var draw_base: bool = true
+## One-time task (office): once finished it can't be used again.
+@export var once: bool = false

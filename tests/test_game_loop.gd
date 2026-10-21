@@ -4,7 +4,8 @@ extends TestCase
 const MAIN := preload("res://scenes/main.tscn")
 
 
-func _main() -> Node:
+func _main(level_id: StringName = &"gym") -> Node:
+	GameState.selected_level = level_id
 	var m: Node = MAIN.instantiate()
 	add(m)
 	return m
@@ -30,7 +31,7 @@ func test_spotted_sends_player_back() -> void:
 	Events.player_detected.disconnect(cb)
 	check_eq(detected[0], 1, "player detected once")
 	check_eq(GameState.detections, 1, "detection counted")
-	check(p.global_position.distance_to((m.get(&"level") as GymLevel).player_spawn) < 1.0, "player sent back to spawn")
+	check(p.global_position.distance_to((m.get(&"level") as Level).player_spawn) < 1.0, "player sent back to spawn")
 	check(pm.awareness < 0.01, "awareness reset after detection")
 	check(GameState.is_running(), "first detection is not game over")
 
@@ -50,7 +51,7 @@ func test_player_releases_station_when_caught() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var p: Player = m.get(&"player")
-	var lvl: GymLevel = m.get(&"level")
+	var lvl: Level = m.get(&"level")
 	var st: Station = lvl.stations[0]
 	check(p.try_use(st), "player on station")
 	var pm: Patroller = m.get_node("Level/World/ProductManager") as Patroller
@@ -90,7 +91,7 @@ func test_restart_leaves_no_residue() -> void:
 		await step_frames(3)
 		GameState.start_run()
 		var p: Player = m.get(&"player")
-		var lvl: GymLevel = m.get(&"level")
+		var lvl: Level = m.get(&"level")
 		p.try_use(lvl.stations[i % lvl.stations.size()])
 		await step_frames(3)
 		m.free()
@@ -120,7 +121,7 @@ func test_no_instant_remount_after_a_set() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var p: Player = m.get(&"player")
-	var st: Station = (m.get(&"level") as GymLevel).stations[2]
+	var st: Station = (m.get(&"level") as Level).stations[2]
 	check(p.try_use(st), "on the treadmill")
 	st.finish_use(p)
 	await step_frames(2)
@@ -137,7 +138,7 @@ func test_respawn_spot_is_safe_for_a_while() -> void:
 	GameState.start_run()
 	var pm: Patroller = m.get_node("Level/World/ProductManager") as Patroller
 	var p: Player = m.get(&"player")
-	var lvl: GymLevel = m.get(&"level")
+	var lvl: Level = m.get(&"level")
 	pm.spotted_player.emit()
 	# PM stands right next to the spawn staring at it
 	pm.set_physics_process(false)
@@ -157,7 +158,7 @@ func test_water_cup_reserves_machine() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var p: Player = m.get(&"player")
-	var lvl: GymLevel = m.get(&"level")
+	var lvl: Level = m.get(&"level")
 	var bench: Station = lvl.stations[0]
 	p.snap_to(bench.exit_point())
 	p.facing = Vector2.UP
@@ -183,7 +184,7 @@ func test_player_queues_then_gets_turn() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var p: Player = m.get(&"player")
-	var lvl: GymLevel = m.get(&"level")
+	var lvl: Level = m.get(&"level")
 	var st: Station = lvl.stations[1]
 	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
 	check(g.begin_use(st), "regular on the dumbbells")
@@ -204,7 +205,7 @@ func test_shove_knocks_regular_back() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var p: Player = m.get(&"player")
-	var lvl: GymLevel = m.get(&"level")
+	var lvl: Level = m.get(&"level")
 	var st: Station = lvl.stations[4]
 	var g: GymGoer = lvl.world.get_node(^"GymGoer0") as GymGoer
 	g.begin_use(st)
@@ -229,7 +230,7 @@ func test_every_standing_spot_is_in_reach() -> void:
 	await step_frames(2)
 	GameState.start_run()
 	var p: Player = m.get(&"player")
-	var lvl: GymLevel = m.get(&"level")
+	var lvl: Level = m.get(&"level")
 	for st: Station in lvl.stations:
 		p.snap_to(st.interact_point())
 		check(p._find_focus_station() == st, "E reaches %s from its standing spot" % st.name)

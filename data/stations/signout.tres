@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="StationData" format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/station_data.gd" id="1_sd"]
+
+[resource]
+script = ExtResource("1_sd")
+id = &"signout"
+display_name = "前台签退"
+use_time = 4.0
+capacity = 1
+minigame = &"hold_release"
+reps_per_set = 1
+minigame_params = {"charge_rate": 0.55, "zone_lo": 0.6, "zone_hi": 0.95}
+stat = &"task"
+stat_gain = 1
+buff_kind = &"stealthy"
+buff_duration = 5.0
+noise = 0.0
+exposure = 1.6
+anim_name = &"signout"
+base_texture_path = "res://assets/sheets/interiors/int03_office_desks_768.png"
+base_region = Rect2(320, 578, 176, 114)
+anchor_offsets = Array[Vector2]([Vector2(-55, 22)])
+exit_offset = Vector2(-55, 30)
+footprint = Vector2(170, 50)
+placeholder_color = Color(0.8, 0.65, 0.4, 1)
+requires = Array[StringName]([&"printer"])
+hint_text = "按住 E 签名，绿区松开（趁前台不看你）"
+sheet_pose = &"back"
+draw_base = true
+once = true

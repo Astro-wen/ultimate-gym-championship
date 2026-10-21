@@ -97,7 +97,7 @@ func try_claim(who: Node) -> bool:
 		return false
 	if station_of(who) != null:
 		return false
-	if _users.size() >= data.capacity or is_reserved_against(who):
+	if _users.size() >= data.capacity or is_reserved_against(who) or is_locked_for(who):
 		return false
 	var id: int = who.get_instance_id()
 	_users.append(who)
@@ -181,6 +181,18 @@ func unreserve() -> void:
 	queue_redraw()
 
 
+## Unfinished prerequisite tasks block the player (NPCs never use gated stations).
+func is_locked_for(_who: Node) -> bool:
+	if data == null:
+		return false
+	if data.once and GameState.sets_done.has(data.id):
+		return true
+	for req: StringName in data.requires:
+		if not GameState.sets_done.has(req):
+			return true
+	return false
+
+
 func is_reserved_against(who: Node) -> bool:
 	return reserved_by != null and is_instance_valid(reserved_by) and reserved_by != who
 
@@ -236,6 +248,8 @@ func _prune_queue() -> void:
 func is_turn_of(who: Node) -> bool:
 	if not is_free():
 		return false
+	if is_locked_for(who):
+		return false
 	if reserved_by != null and is_instance_valid(reserved_by):
 		return who == reserved_by
 	_prune_queue()
@@ -280,7 +294,9 @@ func _draw() -> void:
 	if data == null:
 		return
 	var tex: Texture2D = data.base_texture if data.base_texture != null else _tex
-	if tex != null:
+	if not data.draw_base:
+		pass
+	elif tex != null:
 		var tex_size: Vector2 = data.base_region.size if data.base_region.has_area() else tex.get_size()
 		var dst := Rect2(Vector2(-tex_size.x * 0.5, -tex_size.y), tex_size)
 		if data.base_region.has_area():

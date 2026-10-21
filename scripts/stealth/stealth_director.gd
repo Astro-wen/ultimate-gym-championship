@@ -12,7 +12,7 @@ extends Node
 @export var spawn_safe_time: float = 6.0
 
 var player: Player
-var level: GymLevel
+var level: Level
 var _last_alert: float = -1.0
 
 

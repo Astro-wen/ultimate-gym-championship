@@ -4,7 +4,8 @@ extends TestCase
 const MAIN := preload("res://scenes/main.tscn")
 
 
-func _run(pm_active: bool) -> Dictionary:
+func _run(pm_active: bool, level_id: StringName = &"gym") -> Dictionary:
+	GameState.selected_level = level_id
 	var m: Node = MAIN.instantiate()
 	add(m)
 	await step_frames(2)

@@ -38,6 +38,8 @@ func test_each_station_completes_a_set() -> void:
 		var p := Node2D.new()
 		p.add_to_group(&"player")
 		add(p)
+		for req: StringName in d.requires:
+			GameState.sets_done[req] = 1   # prerequisites done
 		check(s.try_claim(p), "%s claim" % d.id)
 		var g: Minigame = Minigame.create(d)
 		check(g != null, "%s minigame" % d.id)
