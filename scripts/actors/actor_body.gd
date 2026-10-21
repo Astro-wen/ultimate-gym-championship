@@ -11,6 +11,8 @@ enum Speed { STILL, WALK, SPRINT }
 @export var skin_color: Color = Color(0.98, 0.82, 0.68)
 
 var facing: Vector2 = Vector2.DOWN
+## NPC acceleration (px/s²) used by steer().
+var steer_accel: float = 900.0
 var speed_kind: Speed = Speed.STILL
 var station: Station = null
 ## The station this actor most recently left (used to avoid instant re-mounts).
@@ -115,6 +117,19 @@ func snap_to(to: Vector2) -> void:
 		visual.position = Vector2.ZERO
 
 
+## Move toward `to` (offset to the next waypoint) with acceleration, easing in
+## on the final point, and turn the sprite only once the heading is clear.
+func steer(to: Vector2, speed: float, arriving: bool, delta: float) -> void:
+	var want: float = speed
+	if arriving:
+		want = speed * clampf(to.length() / 24.0, 0.35, 1.0)
+	velocity = velocity.move_toward(to.normalized() * want, steer_accel * delta)
+	if velocity.length() > 8.0:
+		facing = velocity.normalized()
+	speed_kind = Speed.WALK
+	move_and_slide()
+
+
 func set_collision_enabled(on: bool) -> void:
 	for c: Node in get_children():
 		if c is CollisionShape2D:
@@ -129,6 +144,16 @@ func _exit_tree() -> void:
 ## Short text shown above the head ("!" / "?"), empty for none.
 func bubble() -> String:
 	return ""
+
+
+## 0..1 strength of a small "busy" bob while idle (typing at a desk).
+func busy_motion() -> float:
+	return 0.0
+
+
+## Called by the visual on each foot contact while walking.
+func on_footstep(_running: bool) -> void:
+	pass
 
 
 func _on_use_started() -> void:

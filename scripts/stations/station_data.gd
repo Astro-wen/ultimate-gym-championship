@@ -54,3 +54,8 @@ extends Resource
 @export var draw_base: bool = true
 ## One-time task (office): once finished it can't be used again.
 @export var once: bool = false
+## Draw only these parts of base_region (region-local rects), e.g. to cut a
+## character painted into the furniture art. Empty = the whole region.
+@export var base_pieces: Array[Rect2] = []
+## Tall equipment (printer): its body also blocks watchers' sight.
+@export var blocks_sight: bool = false

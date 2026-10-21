@@ -29,3 +29,4 @@ hint_text = "纸快出来时（指针进绿区）按 E 接住"
 sheet_pose = &"back"
 draw_base = true
 once = true
+blocks_sight = true

@@ -11,6 +11,8 @@ enum State { READY, RUNNING, CAUGHT, WON, TIMEOUT }
 ## Survives reset() and scene reloads on purpose.
 var selected_level: StringName = &""
 var state: State = State.READY
+## While true the run can't end and the clock stops (elevator cutscene).
+var hold_win: bool = false
 var elapsed: float = 0.0
 var detections: int = 0
 var training_points: int = 0
@@ -25,6 +27,7 @@ func _ready() -> void:
 
 func reset() -> void:
 	state = State.READY
+	hold_win = false
 	elapsed = 0.0
 	detections = 0
 	training_points = 0
@@ -99,7 +102,7 @@ func grade() -> String:
 
 
 func tick(delta: float) -> void:
-	if state != State.RUNNING:
+	if state != State.RUNNING or hold_win:
 		return
 	elapsed += delta
 	for kind: StringName in active_buffs.keys():

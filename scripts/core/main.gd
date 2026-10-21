@@ -69,7 +69,8 @@ func _ready() -> void:
 	Juice.attach(self, level.world)
 	var cam := ShakeCamera.new()
 	cam.name = "Camera"
-	cam.position = Level.ROOM * 0.5
+	cam.room = Level.ROOM
+	cam.target = player
 	cam.process_callback = Camera2D.CAMERA2D_PROCESS_PHYSICS
 	add_child(cam)
 	Events.run_finished.connect(func(_r: Dictionary) -> void: _ended_ms = Time.get_ticks_msec())
@@ -105,7 +106,13 @@ func _spawn_npcs() -> void:
 		var w := Patroller.new()
 		w.name = String(s.get("name", "Sitter"))
 		w.level = level
-		w.points = [s["pos"]]
+		var route: Array[Vector2] = [s["pos"]]
+		for p: Vector2 in s.get("route", []):
+			route.append(p)
+		w.points = route
+		w.schedule_loops = int(s.get("loops", 1))
+		w.view_range = float(s.get("range", 200.0))
+		w.sweep_deg = float(s.get("sweep", 40.0))
 		w.position = s["pos"]
 		w.target_player = player
 		w.view_angle = float(s.get("angle", 60.0))

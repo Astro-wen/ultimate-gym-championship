@@ -206,7 +206,7 @@ func is_available_for(who: Node) -> bool:
 
 ## Joins the line. False if the line is full or the machine is reserved.
 func join_queue(who: Node) -> bool:
-	if who == null or _users.has(who) or is_reserved_against(who):
+	if who == null or _users.has(who) or is_reserved_against(who) or is_locked_for(who):
 		return false
 	if _queue.has(who):
 		return true
@@ -279,7 +279,7 @@ func _build_body() -> void:
 	if data == null or data.footprint == Vector2.ZERO:
 		return
 	_body = StaticBody2D.new()
-	_body.collision_layer = Layers.WORLD
+	_body.collision_layer = Layers.WORLD | (Layers.VISION_BLOCKER if data.blocks_sight else 0)
 	_body.collision_mask = 0
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
@@ -299,7 +299,10 @@ func _draw() -> void:
 	elif tex != null:
 		var tex_size: Vector2 = data.base_region.size if data.base_region.has_area() else tex.get_size()
 		var dst := Rect2(Vector2(-tex_size.x * 0.5, -tex_size.y), tex_size)
-		if data.base_region.has_area():
+		if data.base_region.has_area() and not data.base_pieces.is_empty():
+			for piece: Rect2 in data.base_pieces:
+				draw_texture_rect_region(tex, Rect2(dst.position + piece.position, piece.size), Rect2(data.base_region.position + piece.position, piece.size))
+		elif data.base_region.has_area():
 			draw_texture_rect_region(tex, dst, data.base_region)
 		else:
 			draw_texture_rect(tex, dst, false)
@@ -345,5 +348,5 @@ func _draw_focus_marker() -> void:
 	draw_rect(key, Color(0.98, 0.95, 0.8))
 	draw_rect(key, Color(0.15, 0.15, 0.2), false, 2.0)
 	draw_string(font, c + Vector2(-9, 5), "E", HORIZONTAL_ALIGNMENT_CENTER, 18, 14, Color(0.15, 0.15, 0.2))
-	var col := Color(0.3, 1.0, 0.5) if is_free() else Color(1.0, 0.7, 0.3)
+	var col := Color(0.6, 0.6, 0.65) if is_locked_for(null) else (Color(0.3, 1.0, 0.5) if is_free() else Color(1.0, 0.7, 0.3))
 	draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 12), c + Vector2(5, 12), c + Vector2(0, 17)]), col)

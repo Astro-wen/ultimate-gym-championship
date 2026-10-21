@@ -7,7 +7,7 @@ extends Level
 const DESKS: String = "res://assets/sheets/interiors/int03_office_desks_768.png"
 const MISC: String = "res://assets/sheets/interiors/int19_office_misc_768.png"
 
-## Receptionist seat (her body is painted by the counter art).
+## Front desk position (the receptionist sits behind it, see `sitters`).
 const RECEPTION := Vector2(800, 330)
 const ELEVATOR_X: float = 890.0
 
@@ -68,6 +68,8 @@ func _init() -> void:
 		Rect2(712, 190, 40, 44),
 	]
 	player_spawn = Vector2(100, 340)
+	# your own cubicle: sitting or standing at your desk is just working
+	safe_zones = [Rect2(56, 300, 92, 64)]
 	patrol_points = [
 		Vector2(560, 160), Vector2(560, 280), Vector2(372, 275),
 		Vector2(300, 470), Vector2(700, 380),
@@ -79,7 +81,10 @@ func _init() -> void:
 			"schedule": [Vector3(90, 2.0, 80), Vector3(120, 3.0, 210), Vector3(90, 3.0, 80), Vector3(45, 3.0, 210)]},
 		{"name": "Colleague2", "pos": Vector2(246, 336), "skin": [1, 1], "angle": 60.0,
 			"schedule": [Vector3(90, 2.5, 80), Vector3(150, 3.0, 200), Vector3(90, 2.0, 80), Vector3(40, 3.0, 200)]},
-		{"name": "Receptionist", "pos": RECEPTION + Vector2(0, -60), "skin": [0, 3], "angle": 70.0, "hide_body": true,
+		# a real NPC behind the counter; after a round of watching she goes to the
+		# water cooler for a drink (a window to sign out unseen) and comes back
+		{"name": "Receptionist", "pos": RECEPTION + Vector2(0, -70), "skin": [1, 5], "angle": 70.0,
+			"route": [Vector2(690, 246)], "loops": 2, "range": 160.0, "sweep": 35.0,
 			"schedule": [Vector3(45, 3.0, 90), Vector3(105, 3.0, 230), Vector3(-35, 3.0, 180)]},
 	]
 
@@ -106,17 +111,94 @@ func _draw_room() -> void:
 	# company logo behind the front desk
 	draw_rect(Rect2(735, 30, 130, 44), Color(0.2, 0.35, 0.6))
 	draw_string(ThemeDB.fallback_font, Vector2(735, 60), "需求科技", HORIZONTAL_ALIGNMENT_CENTER, 130, 20, Color.WHITE)
-	# elevator: steel doors, frame, floor display, call button
-	var ex: float = ELEVATOR_X
-	draw_rect(Rect2(ex - 40, 18, 80, 78), Color(0.35, 0.37, 0.42))
-	draw_rect(Rect2(ex - 34, 30, 33, 66), Color(0.72, 0.75, 0.8))
-	draw_rect(Rect2(ex + 1, 30, 33, 66), Color(0.68, 0.71, 0.76))
-	draw_line(Vector2(ex, 30), Vector2(ex, 96), Color(0.3, 0.32, 0.36), 2.0)
-	draw_rect(Rect2(ex - 16, 20, 32, 9), Color(0.1, 0.1, 0.12))
-	draw_string(ThemeDB.fallback_font, Vector2(ex - 16, 28), "1F ▼", HORIZONTAL_ALIGNMENT_CENTER, 32, 8, Color(1.0, 0.55, 0.2))
-	draw_circle(Vector2(ex + 46, 64), 4.0, Color(0.9, 0.9, 0.92))
-	draw_circle(Vector2(ex + 46, 64), 2.0, Color(1.0, 0.6, 0.2))
+	_draw_elevator()
 	# glass walls of the meeting room
 	for r: Rect2 in glass:
 		draw_rect(Rect2(r.position - Vector2(0, 30), r.size + Vector2(0, 30)), Color(0.7, 0.88, 0.96, 0.35))
 		draw_rect(Rect2(r.position - Vector2(0, 30), r.size + Vector2(0, 30)), Color(0.55, 0.7, 0.8, 0.8), false, 1.0)
+
+
+# --- elevator ------------------------------------------------------------------
+
+## 0 = closed, 1 = fully open.
+var door_open: float = 0.0:
+	set(v):
+		door_open = v
+		queue_redraw()
+## Floor shown above the doors (counts down while you call it).
+var floor_num: int = 5:
+	set(v):
+		if v != floor_num:
+			floor_num = v
+			queue_redraw()
+var _riding: bool = false
+
+
+func _ready() -> void:
+	super._ready()
+	Events.station_use_finished.connect(_on_task_done)
+
+
+func _process(_delta: float) -> void:
+	if _riding:
+		return
+	# the car comes down while you hold the call button
+	var p: Player = get_tree().get_first_node_in_group(&"player") as Player
+	if p != null and p.station != null and p.station.data.id == &"elevator" and p.minigame is HoldReleaseGame:
+		floor_num = clampi(5 - int((p.minigame as HoldReleaseGame).charge * 5.0), 1, 5)
+	elif not GameState.sets_done.has(&"elevator"):
+		floor_num = 5
+
+
+func _on_task_done(st: Node, who: Node) -> void:
+	if (st as Station).data.id == &"elevator" and who is Player and not _riding:
+		ride_elevator(who as Player)
+
+
+## Ding, doors open, the player walks in, doors close, then the run ends.
+func ride_elevator(p: Player) -> void:
+	_riding = true
+	GameState.hold_win = true
+	p.input_enabled = false
+	var inside := Vector2(ELEVATOR_X, WALL_TOP - 2.0)
+	var tw: Tween = create_tween()
+	tw.tween_method(func(f: float) -> void: floor_num = int(round(f)), float(floor_num), 1.0, 0.4)
+	tw.tween_callback(Events.elevator_ding.emit)
+	tw.tween_property(self, ^"door_open", 1.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		p.facing = Vector2.UP
+		p.speed_kind = ActorBody.Speed.WALK
+		p.glide_to(inside, 0.55))
+	tw.tween_interval(0.6)
+	tw.tween_callback(func() -> void:
+		p.speed_kind = ActorBody.Speed.STILL
+		p.visible = false)
+	tw.tween_property(self, ^"door_open", 0.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_interval(0.35)
+	tw.tween_callback(func() -> void: GameState.hold_win = false)
+
+
+func _draw_elevator() -> void:
+	var ex: float = ELEVATOR_X
+	var frame := Rect2(ex - 40, 18, 80, 78)
+	draw_rect(frame, Color(0.35, 0.37, 0.42))
+	# the car interior shows as the doors part
+	draw_rect(Rect2(ex - 34, 30, 68, 66), Color(0.22, 0.2, 0.18))
+	draw_rect(Rect2(ex - 30, 34, 60, 6), Color(1.0, 0.92, 0.7, 0.8))
+	draw_rect(Rect2(ex - 34, 86, 68, 10), Color(0.4, 0.36, 0.3))
+	# two leaves sliding into the frame
+	var leaf: float = 34.0 * (1.0 - door_open)
+	if leaf > 0.5:
+		draw_rect(Rect2(ex - leaf, 30, leaf, 66), Color(0.72, 0.75, 0.8))
+		draw_rect(Rect2(ex, 30, leaf, 66), Color(0.68, 0.71, 0.76))
+		draw_line(Vector2(ex - leaf, 30), Vector2(ex - leaf, 96), Color(0.55, 0.58, 0.62), 1.0)
+		draw_line(Vector2(ex + leaf, 30), Vector2(ex + leaf, 96), Color(0.55, 0.58, 0.62), 1.0)
+		draw_line(Vector2(ex, 30), Vector2(ex, 96), Color(0.3, 0.32, 0.36), 2.0)
+	# floor display + direction arrow
+	draw_rect(Rect2(ex - 16, 20, 32, 9), Color(0.1, 0.1, 0.12))
+	var arrow: String = "" if floor_num <= 1 else " ▼"
+	draw_string(ThemeDB.fallback_font, Vector2(ex - 16, 28), "%dF%s" % [floor_num, arrow], HORIZONTAL_ALIGNMENT_CENTER, 32, 8, Color(1.0, 0.55, 0.2))
+	# call button: lit while the car is coming / riding
+	var lit: bool = _riding or floor_num < 5
+	draw_circle(Vector2(ex + 46, 64), 4.0, Color(0.9, 0.9, 0.92))
+	draw_circle(Vector2(ex + 46, 64), 2.0, Color(1.0, 0.6, 0.2) if lit else Color(0.55, 0.55, 0.6))

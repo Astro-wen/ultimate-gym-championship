@@ -39,6 +39,8 @@ var _t: float = 0.0
 var _toasts: Array[Dictionary] = []   # {text, kind, t}
 var _caught_flash: float = 0.0
 var _shown_progress: float = 0.0
+## Full length of the current stealth buff (for its countdown bar).
+var _buff_full: float = 8.0
 var _sb_cache: Dictionary = {}
 
 
@@ -55,6 +57,7 @@ func _ready() -> void:
 	Events.station_use_finished.connect(_on_set_done)
 	Events.player_detected.connect(_on_detected)
 	Events.toast.connect(toast)
+	Events.buff_applied.connect(func(_k: StringName, d: float) -> void: _buff_full = d)
 	Events.shoved.connect(func(_p: Node, _v: Node, _at: Vector2) -> void: toast("挤上去了！对方很不爽，产品经理也听见了", &"warn"))
 
 
@@ -365,7 +368,7 @@ func _draw_top_bar_right(vp: Vector2) -> void:
 	if GameState.has_buff(&"stealthy"):
 		var left: float = float(GameState.active_buffs[&"stealthy"])
 		_text(Vector2(x, 24), "隐身", 12, INFO)
-		_bar(Rect2(x + 28, 16, 96, 8), left / 8.0, INFO)
+		_bar(Rect2(x + 28, 16, 96, 8), left / maxf(_buff_full, 0.01), INFO)
 	if player != null and player.cup != null:
 		var cs: String = "水杯在手上"
 		var cc: Color = DIM
@@ -407,6 +410,8 @@ func _draw_play(vp: Vector2) -> void:
 		if label != "":
 			var col: Color = GOOD if st.is_turn_of(player) else (WARN if label.begins_with("挤") else TEXT)
 			items.append(["E", label, col])
+		elif st.is_locked_for(player):
+			items.append(["E", player.locked_reason(st), DIM])
 		elif st.is_reserved_against(player):
 			items.append(["E", "%s被别人占了" % st.data.display_name, DIM])
 		elif player.queued != st and st.queue_size() >= st.max_queue:
@@ -449,11 +454,13 @@ func _draw_minigame_card(vp: Vector2, g: Minigame, d: StationData) -> void:
 	var r := Rect2(vp.x * 0.5 - 180, vp.y - 92, 360, 82)
 	_panel(r, PANEL, PANEL_EDGE, 12)
 	_text(r.position + Vector2(14, 26), d.display_name, 18, TEXT)
-	# rep pips
+	# rep pips, squeezed to fit between the title and the Q key
+	var pip_gap: float = minf(16.0, (r.size.x - 110.0 - 90.0) / float(maxi(g.target_reps, 1)))
 	for i: int in g.target_reps:
-		var c := Vector2(r.position.x + 110 + i * 16, r.position.y + 19)
-		_canvas.draw_circle(c, 6.0, Color(0, 0, 0, 0.4))
-		_canvas.draw_circle(c, 5.0, GOOD if i < g.reps else Color(1, 1, 1, 0.12))
+		var c := Vector2(r.position.x + 110 + i * pip_gap, r.position.y + 19)
+		var pr: float = minf(6.0, pip_gap * 0.45)
+		_canvas.draw_circle(c, pr, Color(0, 0, 0, 0.4))
+		_canvas.draw_circle(c, pr - 1.0, GOOD if i < g.reps else Color(1, 1, 1, 0.12))
 	var qx: float = r.end.x - 70
 	_keycap(Vector2(qx, r.position.y + 9), "Q")
 	_text(Vector2(qx + 28, r.position.y + 25), "离开", 13, DIM)
