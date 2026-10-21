@@ -39,6 +39,7 @@ func test_alternate_requires_alternation() -> void:
 	g.handle_input(&"move_left", true)
 	check_eq(g.reps, 0, "same side twice is not a rep")
 	g.handle_input(&"move_left", true)
+	g.tick(0.15)   # a human gap between hands (simultaneous presses are a miss)
 	g.handle_input(&"move_right", true)
 	check_eq(g.reps, 1, "left then right is a rep")
 	g.handle_input(&"move_up", true)
@@ -72,3 +73,41 @@ func test_no_reps_after_finish() -> void:
 	(g as TimingGame).phase = 0.85
 	g.handle_input(&"interact", true)
 	check_eq(g.reps, 1, "reps capped at target")
+
+
+func test_timing_mash_cannot_chain_hits() -> void:
+	var g: TimingGame = Minigame.create(_d(&"timing", 5)) as TimingGame
+	g.phase = 0.85
+	g.handle_input(&"interact", true)
+	check_eq(g.reps, 1, "first hit counts")
+	for i: int in 12:
+		g.tick(1.0 / 60.0)
+		if i % 3 == 0:
+			g.handle_input(&"interact", true)
+	check_eq(g.reps, 1, "mashing right after a hit doesn't chain more reps")
+
+
+func test_alternate_both_keys_at_once_is_a_miss() -> void:
+	var g: AlternateGame = Minigame.create(_d(&"alternate", 6)) as AlternateGame
+	for i: int in 6:
+		g.handle_input(&"move_left", true)
+		g.handle_input(&"move_right", true)
+		g.tick(0.2)
+	check_eq(g.reps, 0, "pressing both sides together never scores")
+	g.handle_input(&"move_left", true)
+	g.tick(0.15)
+	g.handle_input(&"move_right", true)
+	check_eq(g.reps, 1, "a real alternation still scores")
+
+
+func test_hold_press_during_lockout_is_kept() -> void:
+	var g: HoldReleaseGame = Minigame.create(_d(&"hold_release")) as HoldReleaseGame
+	g.handle_input(&"interact", true)
+	for i: int in 45:
+		g.tick(1.0 / 60.0)
+	g.handle_input(&"interact", false)
+	check_eq(g.reps, 1, "first rep")
+	g.handle_input(&"interact", true)   # pressed again during the lockout, and held
+	for i: int in 30:
+		g.tick(1.0 / 60.0)
+	check(g.holding, "the held press starts charging once the lockout ends")

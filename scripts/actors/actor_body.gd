@@ -13,9 +13,12 @@ enum Speed { STILL, WALK, SPRINT }
 var facing: Vector2 = Vector2.DOWN
 var speed_kind: Speed = Speed.STILL
 var station: Station = null
+## The station this actor most recently left (used to avoid instant re-mounts).
+var last_station: Station = null
 ## 0..1, drives the exercise pose while on a station.
 var pose_amount: float = 0.0
 var visual: ActorVisual
+var _glide: Tween
 
 
 func _ready() -> void:
@@ -47,7 +50,7 @@ func _attach(st: Station) -> void:
 	station = st
 	if not st.user_removed.is_connected(_on_station_user_removed):
 		st.user_removed.connect(_on_station_user_removed)
-	global_position = st.anchor_for(self)
+	glide_to(st.anchor_for(self))
 	velocity = Vector2.ZERO
 	speed_kind = Speed.STILL
 	set_collision_enabled(false)
@@ -72,13 +75,39 @@ func _detach(reason: StringName) -> void:
 	if st == null:
 		return
 	station = null
+	last_station = st
 	if st.user_removed.is_connected(_on_station_user_removed):
 		st.user_removed.disconnect(_on_station_user_removed)
 	if is_instance_valid(st):
-		global_position = st.exit_point()
+		glide_to(st.exit_point())
 	pose_amount = 0.0
 	set_collision_enabled(true)
 	_on_use_ended(reason)
+
+
+## Moves the body instantly (physics-wise) but lets the sprite glide there,
+## so mounting/dismounting equipment doesn't pop.
+func glide_to(to: Vector2, secs: float = 0.14) -> void:
+	var from: Vector2 = global_position
+	global_position = to
+	reset_physics_interpolation()
+	if visual == null or secs <= 0.0 or from.distance_to(to) < 1.0:
+		return
+	if _glide != null and _glide.is_valid():
+		_glide.kill()
+	visual.position = from - to
+	_glide = create_tween()
+	_glide.tween_property(visual, ^"position", Vector2.ZERO, secs).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## Teleport without a glide (respawn, debug).
+func snap_to(to: Vector2) -> void:
+	if _glide != null and _glide.is_valid():
+		_glide.kill()
+	global_position = to
+	reset_physics_interpolation()
+	if visual != null:
+		visual.position = Vector2.ZERO
 
 
 func set_collision_enabled(on: bool) -> void:

@@ -16,8 +16,9 @@ func handle_input(action: StringName, pressed: bool) -> void:
 	_count(good)
 	_punch = 1.0
 	if good:
+		# knock the bag back out of the zone so mashing can't chain hits
 		_dir = -1.0
-		phase = z.y
+		phase = maxf(z.x - p("knockback", 0.08), 0.0)
 	else:
 		_stun = p("stun", 0.5)
 

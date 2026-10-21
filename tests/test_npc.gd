@@ -4,6 +4,10 @@ extends TestCase
 
 
 func test_gym_goers_soak_5_minutes() -> void:
+	# goers only act during a run; make this one long enough for the soak
+	var saved_limit: float = GameState.time_limit
+	GameState.time_limit = 100000.0
+	GameState.start_run()
 	var level := GymLevel.new()
 	add(level)
 	var goers: Array[GymGoer] = []
@@ -45,6 +49,7 @@ func test_gym_goers_soak_5_minutes() -> void:
 				if ga.mode == GymGoer.Mode.USE and gb.mode == GymGoer.Mode.USE:
 					check(ga.station != gb.station or ga.station.capacity() > 1, "two goers on one single-slot station")
 	Events.station_use_finished.disconnect(cb)
+	GameState.time_limit = saved_limit
 	check(worst < 25.0, "no goer stuck in one mode for 25s (worst %.1fs)" % worst)
 	check(sets[0] >= 15, "goers keep training (%d sets in 5 min)" % sets[0])
 	for g: GymGoer in goers:
@@ -65,3 +70,17 @@ func test_every_station_reachable() -> void:
 	for p: Vector2 in level.npc_spawns:
 		check(level.is_walkable(p), "npc spawn %s walkable" % p)
 	check(level.is_walkable(level.player_spawn), "player spawn walkable")
+
+
+func test_goers_idle_outside_a_run() -> void:
+	var level := GymLevel.new()
+	add(level)
+	var g := GymGoer.new()
+	g.level = level
+	g.position = level.npc_spawns[0]
+	level.world.add_child(g)
+	for i: int in 120:
+		await tree.physics_frame
+	check(g.global_position.distance_to(level.npc_spawns[0]) < 0.5, "goer doesn't wander before the run starts")
+	for st: Station in level.stations:
+		check(st.is_free(), "no machine claimed before the run starts")

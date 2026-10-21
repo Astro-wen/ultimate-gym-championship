@@ -80,6 +80,10 @@ pause={
 2d_physics/layer_6="cover"
 2d_physics/layer_7="goal"
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
