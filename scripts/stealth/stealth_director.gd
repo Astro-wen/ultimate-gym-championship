@@ -8,6 +8,8 @@ extends Node
 @export var difficulty_step: float = 0.05
 @export var difficulty_cap: float = 1.3
 @export var respawn_grace: float = 2.5
+## The respawn spot stays unseeable this long (as long as the player stays near it).
+@export var spawn_safe_time: float = 6.0
 
 var player: Player
 var level: GymLevel
@@ -46,8 +48,11 @@ func _on_spotted(by: Patroller) -> void:
 		var pt: Patroller = n as Patroller
 		pt.awareness = 0.0
 		pt.grace = respawn_grace
+		pt.safe_point = level.player_spawn
+		pt.safe_t = spawn_safe_time
 	by.difficulty = minf(by.difficulty + difficulty_step, difficulty_cap)
 	if GameState.detections >= max_detections:
 		GameState.finish(GameState.State.CAUGHT)
 	else:
-		GameState.elapsed += time_penalty
+		# never past the limit: the run then ends as a normal timeout at 3:00
+		GameState.elapsed = minf(GameState.elapsed + time_penalty, GameState.time_limit)

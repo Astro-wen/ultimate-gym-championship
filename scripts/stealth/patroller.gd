@@ -13,6 +13,9 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 @export var sweep_deg: float = 50.0
 @export var hearing_range: float = 320.0
 @export var investigate_time: float = 2.0
+## After turning toward a noise, quieter noises are ignored this long so the
+## PM returns to the route instead of staring at a busy machine forever.
+@export var noise_cooldown: float = 5.0
 ## Awareness tuning (see OPUS_BRIEF 3.7).
 @export var base_rise: float = 0.6
 @export var fall_rate: float = 0.4
@@ -27,6 +30,11 @@ enum Mode { WALK, LOOK, INVESTIGATE, RETURN }
 @export var view_range: float = 264.0
 ## Seconds during which awareness cannot rise (after a detection).
 var grace: float = 0.0
+## Spot where the player can't be seen for `safe_t` more seconds (respawn point).
+var safe_point: Vector2 = Vector2.INF
+var safe_t: float = 0.0
+@export var safe_radius: float = 48.0
+var _noise_cd: float = 0.0
 
 var mode: Mode = Mode.LOOK
 var level: GymLevel
@@ -141,6 +149,9 @@ func _on_noise(at: Vector2, loudness: float) -> void:
 		return
 	if global_position.distance_to(at) > hearing_range * loudness:
 		return
+	if _noise_cd > 0.0 and loudness < 1.0:
+		return
+	_noise_cd = noise_cooldown
 	mode = Mode.INVESTIGATE
 	_timer = investigate_time
 	velocity = Vector2.ZERO
@@ -175,7 +186,10 @@ func _update_awareness(delta: float) -> void:
 	if p == null or not is_instance_valid(p):
 		return
 	grace = maxf(grace - delta, 0.0)
-	var seen: bool = grace <= 0.0 and cone.visible_fraction(sample_points(p)) > 0.0
+	safe_t = maxf(safe_t - delta, 0.0)
+	_noise_cd = maxf(_noise_cd - delta, 0.0)
+	var at_safe: bool = safe_t > 0.0 and p.global_position.distance_to(safe_point) <= safe_radius
+	var seen: bool = grace <= 0.0 and not at_safe and cone.visible_fraction(sample_points(p)) > 0.0
 	if seen:
 		_unseen_t = 0.0
 		var stealthy: bool = GameState.has_buff(&"stealthy")

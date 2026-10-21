@@ -38,7 +38,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if level == null:
+	if level == null or not GameState.is_running():
+		velocity = Vector2.ZERO
+		speed_kind = Speed.STILL
 		return
 	match mode:
 		Mode.CHOOSE:

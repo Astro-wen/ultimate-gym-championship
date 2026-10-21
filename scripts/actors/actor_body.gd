@@ -13,6 +13,8 @@ enum Speed { STILL, WALK, SPRINT }
 var facing: Vector2 = Vector2.DOWN
 var speed_kind: Speed = Speed.STILL
 var station: Station = null
+## The station this actor most recently left (used to avoid instant re-mounts).
+var last_station: Station = null
 ## 0..1, drives the exercise pose while on a station.
 var pose_amount: float = 0.0
 var visual: ActorVisual
@@ -73,6 +75,7 @@ func _detach(reason: StringName) -> void:
 	if st == null:
 		return
 	station = null
+	last_station = st
 	if st.user_removed.is_connected(_on_station_user_removed):
 		st.user_removed.disconnect(_on_station_user_removed)
 	if is_instance_valid(st):

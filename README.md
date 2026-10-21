@@ -36,7 +36,7 @@ Godot 4.7 · GDScript · 像素风 960×540
 ## 开发
 
 ```powershell
-powershell -File tools/test.ps1                 # 全部测试（36 个），有任何脚本错误也算失败
+powershell -File tools/test.ps1                 # 全部测试（43 个），有任何脚本错误也算失败
 powershell -File tools/shot.ps1 out.png --autostart --autoplay --shot-frames=600   # 截图
 powershell -File tools/godot.ps1 --import       # 刷新导入/类缓存
 ```

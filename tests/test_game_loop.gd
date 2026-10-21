@@ -103,3 +103,50 @@ func test_restart_leaves_no_residue() -> void:
 		elif i > 2:
 			check(count <= baseline + 50, "object count stable across restarts (%d vs %d)" % [count, baseline])
 	check_eq(GameState.training_points, 0, "no score residue")
+
+
+func test_time_penalty_never_passes_limit() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	GameState.elapsed = GameState.time_limit - 5.0
+	var pm: Patroller = m.get_node("Level/World/ProductManager") as Patroller
+	pm.spotted_player.emit()
+	check(GameState.elapsed <= GameState.time_limit, "elapsed clamped (%.1f)" % GameState.elapsed)
+
+
+func test_no_instant_remount_after_a_set() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var p: Player = m.get(&"player")
+	var st: Station = (m.get(&"level") as GymLevel).stations[2]
+	check(p.try_use(st), "on the treadmill")
+	st.finish_use(p)
+	await step_frames(2)
+	check(p._find_focus_station() != st, "just-left machine isn't offered again right away")
+	for i: int in 60:
+		await tree.physics_frame
+	p.global_position = st.exit_point()
+	check(p._find_focus_station() == st, "offered again after the short delay")
+
+
+func test_respawn_spot_is_safe_for_a_while() -> void:
+	var m: Node = _main()
+	await step_frames(2)
+	GameState.start_run()
+	var pm: Patroller = m.get_node("Level/World/ProductManager") as Patroller
+	var p: Player = m.get(&"player")
+	var lvl: GymLevel = m.get(&"level")
+	pm.spotted_player.emit()
+	# PM stands right next to the spawn staring at it
+	pm.set_physics_process(false)
+	pm.global_position = lvl.player_spawn + Vector2(0, -120)
+	pm.cone.rotation = PI * 0.5
+	pm.grace = 0.0
+	for i: int in 60:
+		await tree.physics_frame
+		pm.cone.rebuild()
+		pm._update_awareness(1.0 / 60.0)
+	check(pm.awareness < 0.01, "standing at the respawn spot is safe right after a catch (%.2f)" % pm.awareness)
+	check(p.global_position.distance_to(lvl.player_spawn) < 1.0, "player at spawn")

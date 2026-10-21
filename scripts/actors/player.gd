@@ -14,6 +14,9 @@ signal minigame_changed(game: Minigame)
 @export var reach: float = 30.0
 ## An E pressed this long before coming into reach still counts.
 @export var interact_buffer: float = 0.18
+## After leaving a machine, it can't be re-mounted for this long (mashing E
+## through the last rep shouldn't put you straight back on).
+@export var remount_delay: float = 0.8
 
 const MINIGAME_ACTIONS: Array[StringName] = [&"interact", &"move_left", &"move_right", &"move_up", &"move_down"]
 
@@ -22,6 +25,7 @@ var input_enabled: bool = true
 ## Station highlighted for interaction (nearest in reach).
 var focus_station: Station = null
 var _buffer_t: float = 0.0
+var _remount_t: float = 0.0
 ## Last seen pressed state per minigame action. Edges are derived from this
 ## instead of just_pressed so nothing is lost across pauses or frame hiccups,
 ## and a key still held from mounting doesn't count as a new press.
@@ -51,6 +55,7 @@ func _physics_process(delta: float) -> void:
 	_move(delta)
 	_set_focus(_find_focus_station())
 	_buffer_t = maxf(_buffer_t - delta, 0.0)
+	_remount_t = maxf(_remount_t - delta, 0.0)
 	if Input.is_action_just_pressed(&"interact"):
 		_buffer_t = interact_buffer
 	if _buffer_t > 0.0 and focus_station != null and try_use(focus_station):
@@ -89,7 +94,7 @@ func _find_focus_station() -> Station:
 	var best_d: float = INF
 	for n: Node in get_tree().get_nodes_in_group(&"stations"):
 		var st: Station = n as Station
-		if st == null:
+		if st == null or (st == last_station and _remount_t > 0.0):
 			continue
 		var d: float = st.distance_to_point(global_position)
 		# prefer the one we're facing when two are in reach
@@ -127,6 +132,8 @@ func _on_use_started() -> void:
 
 func _on_use_ended(_reason: StringName) -> void:
 	visual.z_index = 0
+	_remount_t = remount_delay
+	_buffer_t = 0.0
 	minigame = null
 	velocity = Vector2.ZERO
 	facing = Vector2.DOWN

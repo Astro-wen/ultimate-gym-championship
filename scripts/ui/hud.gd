@@ -44,7 +44,8 @@ func _on_set_done(st: Node, who: Node) -> void:
 
 
 func _process(delta: float) -> void:
-	_flash_t = maxf(_flash_t - delta, 0.0)
+	if not get_tree().paused:
+		_flash_t = maxf(_flash_t - delta, 0.0)
 	_canvas.queue_redraw()
 
 

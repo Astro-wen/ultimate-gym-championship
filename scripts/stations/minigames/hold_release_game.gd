@@ -5,10 +5,15 @@ extends Minigame
 var charge: float = 0.0
 var holding: bool = false
 var _lockout: float = 0.0
+## Key state seen during the lockout; a press held through it starts charging.
+var _pending_down: bool = false
 
 
 func handle_input(action: StringName, pressed: bool) -> void:
-	if action != &"interact" or _lockout > 0.0:
+	if action != &"interact":
+		return
+	if _lockout > 0.0:
+		_pending_down = pressed
 		return
 	if pressed:
 		holding = true
@@ -23,7 +28,12 @@ func handle_input(action: StringName, pressed: bool) -> void:
 
 
 func tick(delta: float) -> void:
-	_lockout = maxf(_lockout - delta, 0.0)
+	if _lockout > 0.0:
+		_lockout = maxf(_lockout - delta, 0.0)
+		if _lockout == 0.0 and _pending_down:
+			_pending_down = false
+			holding = true
+			charge = 0.0
 	if holding:
 		charge += delta * p("charge_rate", 0.9)
 		if charge > 1.0:
